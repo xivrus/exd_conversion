@@ -224,10 +224,14 @@ while ($true) {
 $SILENTLY_OVERWRITE = $false
 $GLOBAL_CUSTOMIZE = $false
 $WRITE_FILE_INDEX_IN_TRANSLATION = $false
+"This script is designed to be run from project root if you want to work on a file"
+"or from target folder if you'd like to do mass conversion."
 "Drag and drop EXH file and press Enter,"
 "or enter 'all' to get all EXH files in current folder."
 $exh_answer = Read-Host ' '
 if ($exh_answer.ToLower() -eq 'all') {
+    $exh_answer = Get-ChildItem ".\*.exh" -Recurse
+    "$($exh_answer.Count) EXHs found."
     $_answer = $(Read-Host "Do you want to overwrite all EXD files that already exist? (Y/n)").ToLower()
     switch ($_answer) {
         "n" { break }
@@ -258,8 +262,7 @@ if ($exh_answer.ToLower() -eq 'all') {
     }
     
     "Keep in mind that if there are several CSVs for one EXH, you'll be asked to choose one."
-    $exh_answer = Get-ChildItem ".\*.exh"
-    "$($exh_answer.Count) EXHs found."
+    "Multipaged EXDs are not supported yet so it's advised to do nothing with them for now."
 } else {
     if ( $exh_answer.StartsWith('"') -and $exh_answer.EndsWith('"')) {
         $exh_answer = $exh_answer.Substring(1, $exh_answer.Length-2)
@@ -275,15 +278,14 @@ $file_index = 0
 foreach ($exh_path in $exh_answer) {
 
 $file_index++
-$exh_path = $exh_path.FullName
-$exh_file_name = $(Split-Path $exh_path -Leaf) -replace ".{4}$"
-$current_dir = $(Split-Path $exh_path -Parent)
-$EXD_DIR          = "$current_dir"
+$current_dir = "$PWD\current"
+$exh_file_name = $exh_path.BaseName
+$EXD_DIR          = "$current_dir\exd_mod"
 $BIN_DIR          = "$current_dir\bin"
 $CSV_DIR          = "$current_dir\csv"
+$SUB_PATH         = $exh_path.FullName.Replace($EXD_DIR, "").Replace($($exh_path.Name), "")
 
-$csv_files = Get-ChildItem -Path "$CSV_DIR\$($exh_file_name)_*_*.csv" -Name
-$csv_path = "$CSV_DIR\"
+$csv_files = Get-ChildItem -Path "$CSV_DIR$SUB_PATH$($exh_file_name)_*_*.csv" -Name
 if ($csv_files.Count -gt 1) {
     "$($exh_file_name): Several CSV files were found:"
     for ($_i = 0; $_i -lt $csv_files.Count; $_i++) {
@@ -297,24 +299,27 @@ if ($csv_files.Count -gt 1) {
         $_choice--
         if ( ($_choice -gt -1) -and ($_choice -lt $csv_files.Count) ) {
             "$($csv_files[$_choice]) was chosen."
-            $csv_path += $csv_files[$_choice]
+            $csv_path = "$CSV_DIR$SUB_PATH$csv_files[$_choice]"
             break
         }
         "Try again."
     }
     if ($skip) { "$($exh_file_name): Skipped"; continue }
+} elseif ($null -eq $csv_files) {
+    "$($exh_file_name): $CSV_DIR$SUB_PATH$($exh_file_name)_*_*.csv was not found, skipping."
+    continue
 } else {
     "$($exh_file_name): $csv_files was found."
-    $csv_path += $csv_files
+    $csv_path = "$CSV_DIR$SUB_PATH$csv_files"
 }
-$exd_file_name = $(Split-Path $csv_path -Leaf).TrimEnd(".csv")
+$exd_file_name = $(Get-ChildItem $csv_path).BaseName
 
-$bin_path = "$BIN_DIR\$exd_file_name.bin"
+$bin_path = "$BIN_DIR$SUB_PATH$exd_file_name.bin"
 if (!(Test-Path $bin_path)) {
     "$($exh_file_name): BIN file wasn't found at $bin_path.`n"
     continue
 }
-$exd_path = "$EXD_DIR\$exd_file_name.exd"
+$exd_path = "$EXD_DIR$SUB_PATH$exd_file_name.exd"
 if (!$silently_overwrite -and (Test-Path $exd_path)) {
     $_answer = $(Read-Host "$($exh_file_name): $exd_path already exists. Overwrite? (Y/n)").ToLower()
     switch ($_answer) {
@@ -578,6 +583,8 @@ if ($WRITE_FILE_INDEX_IN_TRANSLATION) {
     for ($_i = 0; $_i -lt $exh_answer.Count; $_i++){
         "{0:X} - {1}" -f ($_i+1), ($exh_answer[$_i].BaseName)
     }
-} else { "Folder conversion complete." }
-
+} elseif ($exh_answer -gt 1)
+    { "Folder conversion complete." }
+else
+    { "Conversion complete." }
 }

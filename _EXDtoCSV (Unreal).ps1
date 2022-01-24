@@ -291,10 +291,15 @@ while ($true) {
 
 $SILENTLY_OVERWRITE = $false
 $GLOBAL_CUSTOMIZE = $false
+"This script is designed to be run from project root if you want to work on a file"
+"or from target folder if you'd like to do mass conversion."
 "Drag and drop EXH file and press Enter,"
 "or enter 'all' to get all EXH files in current folder."
 $exh_answer = Read-Host ' '
 if ($exh_answer.ToLower() -eq 'all') {
+    $exh_answer = Get-ChildItem ".\*.exh" -Recurse
+    "$($exh_answer.Count) EXHs found."
+    $current_dir = "$PWD"
     $_answer = $(Read-Host "Do you want to overwrite all CSV files that already exist? (Y/n)").ToLower()
     switch ($_answer) {
         "n" { continue }
@@ -319,9 +324,8 @@ if ($exh_answer.ToLower() -eq 'all') {
     }
     
     "Keep in mind that if there are several EXDs for one EXH, you'll be asked to choose one."
-    $exh_answer = Get-ChildItem ".\*.exh"
-    "$($exh_answer.Count) EXHs found."
 } else {
+    $current_dir = "$PWD\current"
     if ( $exh_answer.StartsWith('"') -and $exh_answer.EndsWith('"')) {
         $exh_answer = $exh_answer.Substring(1, $exh_answer.Length-2)
     }
@@ -335,17 +339,15 @@ if ($exh_answer.ToLower() -eq 'all') {
 foreach ($exh_path in $exh_answer) {
 
 $exh_file_name = $exh_path.BaseName
-$current_dir = $exh_path.Directory.FullName
-$exh_path = $exh_path.FullName
-$EXD_DIR          = "$current_dir"
+$EXD_DIR          = "$current_dir\exd_mod"
 $BIN_DIR          = "$current_dir\bin"
 $CSV_DIR          = "$current_dir\csv"
-$EXD_SOURCE_DIR   = "$current_dir\source"
+$EXD_SOURCE_DIR   = "$current_dir\exd_source"
+$SUB_PATH         = $exh_path.FullName.Replace($EXD_DIR, "").Replace($($exh_path.Name), "")
 
-$exd_files = Get-ChildItem -Path "$EXD_DIR\$($exh_file_name)_*_*.exd" -Name
-$exd_path = "$EXD_DIR\"
+$exd_files = Get-ChildItem -Path "$EXD_DIR$SUB_PATH$($exh_file_name)_*_*.exd" -Name
 if ($null -eq $exd_files) {
-    "$($exh_file_name): Suitable .exd file with the name `"$exh_file_name`" wasn't found."
+    "$($exh_file_name): Suitable .exd file with the name '$exh_file_name' wasn't found."
     "If there's no language code at the end of the file name"
     "then this file is not language file and you shouldn't touch it.`n"
     continue
@@ -363,7 +365,7 @@ if ($exd_files.Count -gt 1) {
         $_choice--
         if ( ($_choice -gt -1) -and ($_choice -lt $exd_files.Count) ) {
             "$($exd_files[$_choice]) was chosen."
-            $exd_path += $exd_files[$_choice]
+            $exd_path = "$EXD_DIR$SUB_PATH$exd_files[$_choice]"
             break
         }
         "Try again."
@@ -371,11 +373,11 @@ if ($exd_files.Count -gt 1) {
     if ($skip) { "$($exh_file_name): Skipped"; continue }
 } else {
     "$($exh_file_name): $exd_files was found."
-    $exd_path += $exd_files
+    $exd_path = "$EXD_DIR$SUB_PATH$exd_files"
 }
-$exd_file_name = $(Split-Path $exd_path -Leaf).TrimEnd(".exd")
+$exd_file_name = $(Get-ChildItem $exd_path).BaseName
 
-$csv_path = "$CSV_DIR\$exd_file_name.csv"
+$csv_path = "$CSV_DIR$SUB_PATH$exd_file_name.csv"
 if (!$SILENTLY_OVERWRITE -and (Test-Path $csv_path)) {
     $_answer = $(Read-Host "$($exh_file_name): $csv_path already exists. Overwrite? (Y/n)").ToLower()
     switch ($_answer) {
@@ -396,13 +398,15 @@ if (!$GLOBAL_CUSTOMIZE) {
     }
 }
 
+$bin_path = "$BIN_DIR$SUB_PATH$exd_file_name.bin"
+$exd_source_path = "$EXD_SOURCE_DIR$SUB_PATH$exd_file_name.exd"
 
-if (!$(Test-Path $CSV_DIR)) { New-Item $CSV_DIR -ItemType Directory }
-if (!$(Test-Path $BIN_DIR)) { New-Item $BIN_DIR -ItemType Directory }
-if (!$(Test-Path $EXD_SOURCE_DIR)) { New-Item $EXD_SOURCE_DIR -ItemType Directory }
-$bin_path = "$BIN_DIR\$exd_file_name.bin"
-$exd_source_path = "$EXD_SOURCE_DIR\$exd_file_name.exd"
+# Creating directory structures if they don't exist
+if (!$(Test-Path $(Split-Path $csv_path))) { New-Item $(Split-Path $csv_path) -ItemType Directory }
+if (!$(Test-Path $(Split-Path $bin_path))) { New-Item $(Split-Path $bin_path) -ItemType Directory }
+if (!$(Test-Path $(Split-Path $exd_source_path))) { New-Item $(Split-Path $exd_source_path) -ItemType Directory }
 if (!$(Test-Path $exd_source_path)) { Copy-Item $exd_path $exd_source_path }
+
 
 $exh_bytes = $null
 $exd_bytes = $null
