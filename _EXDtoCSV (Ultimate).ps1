@@ -361,7 +361,15 @@ while ($true) {
     }
 
     foreach ($input_file in $input_answer) {
-        $base_name = [regex]::match( "$($input_file.BaseName)_",'.*?(?=_)').Groups[0].Value
+        switch ($input_file.Extension) {
+            '.exh'  { $base_name = $input_file.BaseName; break }
+            '.csv'  { $base_name = $input_file.BaseName; break }
+            default { $base_name = [regex]::match( $input_file.BaseName,'.*(?=_\d_)').Groups[0].Value; break }
+        }
+        if (!$base_name) {
+            "Base name of $($input_file.FullName) turned out empty. Skipping.`n"
+            continue
+        }
         $BIN_DIR          = "$current_dir\bin"
         $CSV_DIR          = "$current_dir\csv"
         $EXD_DIR          = "$current_dir\exd_mod"
