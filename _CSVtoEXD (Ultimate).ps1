@@ -1,4 +1,4 @@
-﻿$host.UI.RawUI.WindowTitle = "CSV -> EXD (Unreal)"
+﻿$host.UI.RawUI.WindowTitle = "CSV -> EXD (Ultimate)"
 
 # Function's source: https://www.sans.org/blog/powershell-byte-array-and-hex-functions/
 function Convert-ByteArrayToHexString
