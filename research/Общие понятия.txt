@@ -1,0 +1,136 @@
+Aetheryte - Эфирит
+Dexterity - Ловкость
+Intelligence - Интеллект
+Mind - Дух
+Piety - Благочестие
+Direct Hit Rate - Прямой удар
+Critical Hit - Критический удар
+Determination - Устремление
+Tenacity - Упорство
+Defense - Физическая защита
+Magic Defense - Магическая защита
+Skill Speed - Скорость умений
+Spell Speed - Скорость заклинаний
+Craftsmanship - Мастерство
+Crafting - Ремесло
+Control - Контроль
+Perception - Восприятие
+Draw (weapon) - Достать
+Sheathe (weapon) - Убрать
+Duty Finder - Искатель Миссий
+Main Hand Weapon - Оружие главной руки
+Off Hand Weapon - Оружие побочной руки
+Gear Set - Набор снаряжения
+Feet (снаряжение) - Обувь
+Player Commendation - Благодарность игрока(ов)
+Beast Tribe - Дикие племена
+Cast Glamour - Наложить гламур
+Glamour Plate - Гламурная плата
+Currency - Валюта
+Company Seals - Печати компании
+Venture (currency) - Токен странствия
+Armoury chest - Оружейный сундук
+Armoire - Оружейный шкаф
+Collectable - Коллекционный предмет
+Dark Matter - Темное вещество; Grade - Уровень
+Pet - Питомец
+Catalyst - Катализатор
+Saddlebag - Походная сумка
+Glamour dresser - Комод гламура
+Extract Materia - Создать материю
+Meld - Вставка
+Retrieve - Извлечь
+Manderville Gold Saucer - Золотое Блюдце Мандервилля
+Faux Hollows - Пустоты Фокса
+Fellowship - Приятельство
+Ward - Регион
+Residential - Жилой
+Notorious monsters - Монстры дурной славы
+Leve/Levequest - Лив/Ливквест
+Mineral deposit - Месторождение минералов
+Rocky outcrop - Каменистое обнажение
+Mature tree - Зрелое дерево
+Lush vegetation - Пышная растительность
+Airships - Воздушные судна
+Submersibles - Подводные судна
+Unspoiled - Нетронутая
+Ephemeral - Эфемерная
+Node (gathering) - место
+Spearfish gig - острога/ловля рыбы острогой
+Attune - Гармонизация
+Seedseer - Сеятельница
+Gemstone - Блестяшка
+Integrity - Целостность
+
+Классы/профессии:
+carpenter     - плотник
+blacksmith    - кузнец
+armorer       - оружейник
+goldsmith     - ювелир
+leatherworker - кожевник
+weaver        - ткач
+alchemist     - алхимик
+culinarian    - кулинар
+miner         - горняк
+botanist      - ботаник
+fisher        - рыбак
+
+gladiator     - гладиатор
+pugilist      - борец
+marauder      - марадёр
+lancer        - копейщик
+archer        - лучник
+conjurer      - элементалист
+thaumaturge   - оккультист
+arcanist      - арканист
+rogue         - жулик
+
+paladin       - паладин
+monk          - монах
+warrior       - воин
+dragoon       - драгун
+bard          - бард
+white mage    - белый маг
+black mage    - чёрный маг
+summoner      - призыватель
+scholar       - учёный
+ninja         - ниндзя
+
+dark knight   - тёмный рыцарь
+machinist     - механик
+astrologian   - астролог
+red mage      - красный маг
+samurai       - самурай
+gunbreaker    - ганбрейкер
+dancer        - танцор
+blue mage     - голубой маг
+reaper        - жнец
+sage          - знаток
+
+Локации:
+La Noscea - Ла Ноша
+Thanalan - Таналан
+Black Shroud - Чёрный Покров
+Mor Dhona - Мор Дона
+Coerthas - Кёртас
+Shposhae (legacy) - Шпошей
+
+Статус эффекты:
+Bind - Связка
+Heavy - Тяжесть
+Slow - Замедление
+Blind - Слепота
+Pacification - Усмирение
+Silence - Молчание
+Paralyze - Паралич
+Haste - Ускорение
+Stun - Оглушение
+
+Ивенты:
+Moonfire Faire - Ярмарка Лунного Огня
+All Saints' Wake - Поминки Всех Святых
+Starlight Celebration - Празднество Звёздного Света
+Heavensturn - Праздник Поворота Небес
+Valentione's Day - Валентионов День
+Little Ladies' Day - День Маленьких Леди
+Hatching-tide - Охота за Яйцами
