@@ -444,7 +444,7 @@ while ($true) {
             "$($base_name): $($options[0]) collection was found."
             $exd_files = Get-ChildItem -Path "$EXD_DIR$SUB_PATH$base_name*$($options[0])"
         }
-        $exd_files = $exd_files | Sort-Object { [int]($_.BaseName -split '_')[1] }
+        $exd_files = $exd_files | Sort-Object { [int]($_.BaseName -split '_')[-2] }
 
         # Setting up CSV path as $base_name.csv and asking questions about it
         $csv_path = "$CSV_DIR$SUB_PATH$base_name.csv"
