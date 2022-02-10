@@ -431,7 +431,7 @@ while ($true) {
         }
         if ($options.Count -gt 1) {
             "$($base_name): Several EXD collections were found:"
-            "(A signle collection is determined by the ending of EXDs after the second _)"
+            "(A single collection is determined by the ending of EXDs after the second _)"
             for ($_i = 0; $_i -lt $options.Count; $_i++) {
                 switch ($options[$_i]) {
                     'en.exd' { "  $($_i+1). English (en.exd)"; break }
