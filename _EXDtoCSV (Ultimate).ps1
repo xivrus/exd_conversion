@@ -130,15 +130,34 @@ function Convert-VariablesToTags
 $input_string = Convert-ByteArrayToHexString $ByteArray -Delimiter '' -Width $ByteArray.Count
 $depth_memory = [System.Collections.ArrayList]@()
 $looking_for_02 = $true
-$offset = 0    # String size is gonna change, so this will keep track of how much
-               # and adjust values accordingly
-$ignore_FF_counter = 0  # There are several strings in addon_0_xx.exd with FE FF and
-                        # FE FF FF FF FF structures. It seems like FE makes the game to
-                        # ignore FFs for, I assume, 4 bytes.
+
+# String size will change, so this will keep track of how much
+# and adjust values accordingly
+$offset = 0
+
+# Workaround variable to skip FFs.
+# Case 1:
+# There are several strings in addon_0_xx.exd with FE FF and
+# FE FF FF FF FF structures. It seems like FE makes the game to
+# ignore FFs for, I assume, 4 bytes. The purpose of those
+# structures is unknown.
+# Case 2:
+# Need to address strings 0x2770 and 0x27B5 in addon_0_en.exd.
+# Case 3:
+# In a bunch of German and French files instead of writing
+# item and NPC names as is, like in English and Japanese, they
+# refer to them through variables of types 32 and 33. In result
+# there's another FF after ((...)) so we're gonna ignore it too.
+# TODO: Figure out how referencing works and make it more pretty.
+$ignore_FF_counter = 0
 
 for ($i = 0; $i -lt $input_string.Length; $i += 2) {
     while ( ($i -eq ($depth_memory[-1] + $offset)) -and $depth_memory[-1] ) {
         $depth_memory.RemoveAt($depth_memory.Count-1)
+        switch ($type_byte) {
+            '32' { $ignore_FF_counter = 1 } # Case 3
+            '33' { $ignore_FF_counter = 1 } # Case 3
+        }
         $byte = $input_string.Substring($i, 2)
         if ($byte -eq "03") {
             if ($looking_for_02) {
@@ -157,6 +176,7 @@ for ($i = 0; $i -lt $input_string.Length; $i += 2) {
                 $input_string = $input_string.Insert($i, "2F7661723E") # "/var>"
                 $offset += 10
                 $i += 10
+                $ignore_FF_counter = 0 # Reset to avoid
             }
         } else {
             $input_string = $input_string.Insert($i, "292920") # ")) "
@@ -175,7 +195,6 @@ for ($i = 0; $i -lt $input_string.Length; $i += 2) {
         $looking_for_02 = $false
 
         $type_byte = $input_string.Substring($i+2, 2)
-        # TODO: Make these types dynamic by having a separate file with their definitions
         switch ($type_byte) {
             "10"    { $var_string = "3C62723E"; $skip_03 = $true; break } # <br> - New line
             default {
@@ -210,7 +229,7 @@ for ($i = 0; $i -lt $input_string.Length; $i += 2) {
                     $size = [uint32]('0x' + $size_first_byte) - 1
                     $null = $depth_memory.Add( $i + ($size+3)*2 - $offset )
                 }
-                if ($type_byte -eq '49') { $ignore_FF_counter = $size + 1 } # Temp. workaround, addressing 0x2770 and 0x27B5 in addon_0_en.exd
+                if ($type_byte -eq '49') { $ignore_FF_counter = 1 } # Case 2
                 $input_string = $input_string.Remove($i, 6).Insert($i, $var_string)
                 $offset += $var_string.Length - 6
                 break }
@@ -225,9 +244,9 @@ for ($i = 0; $i -lt $input_string.Length; $i += 2) {
     }
     if ( ($input_string.Substring($i, 2) -eq 'FF') -and -not $ignore_FF_counter) {
         if ($input_string.Substring($i-4, 4) -eq '4645') { # 'FE'
-            $ignore_FF_counter = 4
+            $ignore_FF_counter = 4   # Case 1
         } elseif ($input_string.Substring($i+2, 2) -eq 'FF') {
-            $ignore_FF_counter = 2
+            $ignore_FF_counter = 2   # Case 1
         } else {
             $looking_for_02 = $true
             
@@ -278,7 +297,7 @@ for ($i = 0; $i -lt $input_string.Length; $i += 2) {
         $input_string = $input_string.Remove($i, 2).Insert($i, "$($byte_hex)")
         $offset += 2
         $i += 2
-        if ($ignore_FF_counter) { $ignore_FF_counter-- }
+        if ($byte_hex -eq 'FF' -and $ignore_FF_counter) { $ignore_FF_counter-- }
     }
 }
 
