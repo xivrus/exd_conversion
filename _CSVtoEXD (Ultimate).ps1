@@ -394,9 +394,22 @@ while ($true) {
                 default { $INDEXES_CHOICE = 0; break }
             }
         }
+        if (!$SILENTLY_OVERWRITE -and ($page_table.Count -gt 1)) {
+            $_answer = $(Read-Host "$($base_name): Several EXDs will be generated from this CSV. Overwrite them? (Y/n)").ToLower()
+            switch ($_answer) {
+                "n" { continue }
+                default {
+                    $SILENTLY_OVERWRITE = $true
+                    "Note: If any of generated EXDs is the same as the one that already exists"
+                    "      it will not be overwritten anyway."
+                    break
+                }
+            }
+        }
 
         # Conversion start
-        $_current_row = $page_table[0].PageEntry
+        $current_row = 0
+        $current_progress = 0
         foreach ($page in $page_table) {
             $exd_file_name = "$($base_name)_$($page.PageEntry)_en"
             $bin_path = "$BIN_DIR$SUB_PATH$exd_file_name.bin"
@@ -406,7 +419,8 @@ while ($true) {
                 break
             }
             $exd_path = "$EXD_DIR$SUB_PATH$exd_file_name.exd"
-            if (!$silently_overwrite -and (Test-Path $exd_path)) {
+            $exd_exists = Test-Path $exd_path
+            if (!$SILENTLY_OVERWRITE -and $exd_exists) {
                 $_answer = $(Read-Host "$($base_name): $exd_path already exists. Overwrite? (Y/n)").ToLower()
                 switch ($_answer) {
                     "n" { continue }
@@ -432,16 +446,23 @@ while ($true) {
             $COLUMN_SEPARATOR = '<tab>' # Tab
             $COLUMN_SEPARATOR_BYTE = [System.Text.Encoding]::ASCII.GetBytes($COLUMN_SEPARATOR)
 
-            $current_progress = 0
-            $1_percent = $csv.Count / 100
+            # This 'if' is a workaround against single-paged files like 'addon' and 'error' that
+            # don't start from $page_table[0].PageStart or skip indexes
+            if ($page_table.Count -eq 1) {
+                $_end = $csv.Count
+            } else {
+                $_end = $current_row + $page.PageSize
+            }
             if ($WRITE_FILE_INDEX_IN_TRANSLATION) {
                 $file_index_hex = "{0:X}_" -f $file_index
             } else {
                 $file_index_hex = ""
             }
-            for ($_row = $_current_row; $_row -lt ($_current_row + $page.PageSize); $_row++) {
+
+            $1_percent = $csv.Count / 100
+            for ($_row = $current_row; $_row -lt $_end; $_row++) {
                 if ( $_row -gt ($1_percent * $current_progress) ) {
-                    Write-Progress -Activity "Converting CSV to EXD" -CurrentOperation "Step 1. Collecting indexes, strings, and their offsets" -Status "$current_progress% Complete:" -PercentComplete $current_progress
+                    Write-Progress -Activity "Converting CSV to EXD" -CurrentOperation "Working on '$base_name'" -Status "$current_progress% Complete:" -PercentComplete $current_progress
                     $current_progress += 1
                 }
 
@@ -467,18 +488,26 @@ while ($true) {
 
                 # Even though in theory we could avoid using byte arrays and pass a string instead,
                 # we're still going to get byte array to be safe of PowerShell conversions.
-                if ([System.Text.Encoding]::UTF8.GetByteCount( $csv[$_row].Translation ) -gt 0) {
-                    $translation_string = $file_index_hex + $exd_index_hex + $csv[$_row].Translation
+                try {
+                    if ([System.Text.Encoding]::UTF8.GetByteCount( $csv[$_row].Translation ) -gt 0) {
+                        $translation_string = $file_index_hex + $exd_index_hex + $csv[$_row].Translation
 
-                    $result_bytes = Convert-TagsToVariables $([System.Text.Encoding]::UTF8.GetBytes($translation_string))
-                } elseif ([System.Text.Encoding]::UTF8.GetByteCount( $csv[$_row].Source ) -gt 0) {
-                    $source_string = $file_index_hex + $exd_index_hex + $csv[$_row].Source
+                        $result_bytes = Convert-TagsToVariables $([System.Text.Encoding]::UTF8.GetBytes($translation_string))
+                    } elseif ([System.Text.Encoding]::UTF8.GetByteCount( $csv[$_row].Source ) -gt 0) {
+                        $source_string = $file_index_hex + $exd_index_hex + $csv[$_row].Source
 
-                    $result_bytes = Convert-TagsToVariables $([System.Text.Encoding]::UTF8.GetBytes($source_string))
-                } else {
-                    $result_string = $file_index_hex + $exd_index_hex
+                        $result_bytes = Convert-TagsToVariables $([System.Text.Encoding]::UTF8.GetBytes($source_string))
+                    } else {
+                        $result_string = $file_index_hex + $exd_index_hex
 
-                    $result_bytes = [System.Text.Encoding]::ASCII.GetBytes($result_string)
+                        $result_bytes = [System.Text.Encoding]::ASCII.GetBytes($result_string)
+                    }
+                }
+                catch {
+                    # +2 because +1 for CSV headers and another +1 to start count from 1 instead of 0
+                    "$($base_name): Error at line $($_row + 2). There's most likely an error in tags. Skipping.`n"
+                    $error_var = $true
+                    break
                 }
 
                 # Determining offsets to columns
@@ -492,16 +521,16 @@ while ($true) {
 
                 $null = $row_data.Add(@([uint32]$csv[$_row].Index, $result_bytes, $strings_offsets) )
             }
-            Write-Progress -Activity "Converting CSV to EXD" -CurrentOperation "Step 1. Collecting indexes, strings, and their offsets" -Status "Completed" -Completed
+            if ($error_var) { $error_var = $false; break }
 
             # Step 2. Edit BIN data
-            $current_progress = 0
-            $1_percent = $row_data.Count / 100
+            #$current_progress = 0
+            #$1_percent = $row_data.Count / 100
             for ($_i = 0; $_i -lt $row_data.Count; $_i++) {
-                if ( $i -gt ($1_percent * $current_progress) ) {
-                    Write-Progress -Activity "Converting CSV to EXD" -CurrentOperation "Step 2. Editing BIN data" -Status "$current_progress% Complete:" -PercentComplete $current_progress
-                    $current_progress += 1
-                }
+                #if ( $i -gt ($1_percent * $current_progress) ) {
+                #    Write-Progress -Activity "Converting CSV to EXD" -CurrentOperation "Step 2. Editing BIN data" -Status "$current_progress% Complete:" -PercentComplete $current_progress
+                #    $current_progress += 1
+                #}
                 $_offset = $_i * $data_chunk_size
                 $_string_offsets_bytes = New-Object System.Collections.ArrayList
                 foreach ($_raw_data_piece in $row_data[$_i][2]) {
@@ -525,7 +554,7 @@ while ($true) {
                     }
                 }
             }
-            Write-Progress -Activity "Converting CSV to EXD" -CurrentOperation "Step 2. Editing BIN data" -Status "Completed" -Completed
+            #Write-Progress -Activity "Converting CSV to EXD" -CurrentOperation "Step 2. Editing BIN data" -Status "Completed" -Completed
 
             # Step 3. Setting up actual data table that's going to go in file
             #         + Remembering offsets for the offset table
@@ -535,14 +564,14 @@ while ($true) {
             $index_offset_table = New-Object System.Collections.ArrayList
             $data_table = New-Object System.Collections.ArrayList
             $_current_offset = $data_table_offset
-            $current_progress = 0
-            $1_percent = $row_data.Count / 100
+            #$current_progress = 0
+            #$1_percent = $row_data.Count / 100
             # $_i = 1 # For debug to jump to specified string in CSV
             for ($_i = 0; $_i -lt $row_data.Count; $_i++) {
-                if ( $i -gt ($1_percent * $current_progress) ) {
-                    Write-Progress -Activity "Converting CSV to EXD" -CurrentOperation "Step 3. Preparing data table" -Status "$current_progress% Complete:" -PercentComplete $current_progress
-                    $current_progress += 1
-                }
+                #if ( $i -gt ($1_percent * $current_progress) ) {
+                #    Write-Progress -Activity "Converting CSV to EXD" -CurrentOperation "Step 3. Preparing data table" -Status "$current_progress% Complete:" -PercentComplete $current_progress
+                #    $current_progress += 1
+                #}
                 $null = $index_offset_table.Add(@($row_data[$_i][0],$_current_offset) )
                 $_size = $data_chunk_size + $row_data[$_i][1].Length
                 $_zeros = 4 - (2 + $_size) % 4     # Seems like padding is always aligned to 4
@@ -565,7 +594,7 @@ while ($true) {
                 $_current_offset += 6 + $_size + $_zeros
             }
             [byte[]]$data_table = $data_table.ToArray() # Checking that we've got only bytes
-            Write-Progress -Activity "Converting CSV to EXD" -CurrentOperation "Step 3. Preparing data table" -Status "Completed" -Completed
+            #Write-Progress -Activity "Converting CSV to EXD" -CurrentOperation "Step 3. Preparing data table" -Status "Completed" -Completed
 
             # Step 4. Create offset table
             $offset_table = [System.Collections.ArrayList]@()
@@ -603,11 +632,23 @@ while ($true) {
                 Remove-Variable data_table
                 continue
             }
-            Set-Content -Value ($exd_header + $offset_table + $data_table) -Encoding Byte -Path $exd_path
-            "$($base_name): $exd_path exported."
+            $stream = [IO.MemoryStream]::new($exd_header + $offset_table + $data_table)
+            if ($exd_exists -and $SILENTLY_OVERWRITE -and ($page_table.Count -gt 1) ) {
+                $_hash1 = Get-FileHash -InputStream $stream
+                $_hash2 = Get-FileHash -Path $exd_path
+                if ($_hash1.Hash -ne $_hash2.Hash) {
+                    Set-Content -Value ($exd_header + $offset_table + $data_table) -Encoding Byte -Path $exd_path
+                    "$($base_name): $exd_path exported."
+                } else { "$($base_name): $exd_path is identical, skipped." }
+            } else {
+                Set-Content -Value ($exd_header + $offset_table + $data_table) -Encoding Byte -Path $exd_path
+                "$($base_name): $exd_path exported."
+            }
             Remove-Variable data_table
-            $_current_row += $page.PageSize
+            $current_row += $page.PageSize
         }
+        # I have no idea why progress bar doesn't work after calling and completing it once so I'll just unite it then
+        Write-Progress -Activity "Converting CSV to EXD" -CurrentOperation "Working on '$base_name'" -Status "Completed" -Completed
     }
 
     if ($WRITE_FILE_INDEX_IN_TRANSLATION) {
