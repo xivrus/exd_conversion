@@ -315,13 +315,13 @@ while ($true) {
         $EXH_DIR          = "$current_dir\exh"
         $SUB_PATH         = $input_file.FullName -replace '.*?\\bin|.*?\\csv|.*?\\exd_mod|.*?\\exd_source|.*?\\exh','' -replace "$($base_name).*",''
 
-	# If EXH file is in 'exd_source' folder, move it to 'exh' folder and tell about it to user
+	    # If EXH file is in 'exd_source' folder, move it to 'exh' folder and tell about it to user
         if (Test-Path "$EXD_SOURCE_DIR$SUB_PATH$($base_name).exh") {
             if (!$(Test-Path "$EXH_DIR$SUB_PATH")) { $null = New-Item "$EXH_DIR$SUB_PATH" -ItemType Directory }
             Move-Item "$EXD_SOURCE_DIR$SUB_PATH$($base_name).exh" "$EXH_DIR$SUB_PATH$($base_name).exh" -Force
             "$($base_name): EXH file was found in 'exd_source' - moved to 'exh' folder."
         }
-	# Collect data from EXH
+	    # Collect data from EXH
         $exh_path = "$EXH_DIR$SUB_PATH$($base_name).exh"
         if (!$(Test-Path -Path $exh_path)) {
             "$($base_name): EXH file at $exh_path wasn't found. Skipping.`n"
