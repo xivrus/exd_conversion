@@ -399,7 +399,7 @@ while ($true) {
             switch ($_answer) {
                 "n" { continue }
                 default {
-                    $SILENTLY_OVERWRITE = $true
+                    $silently_overwrite_multipage = $true
                     "Note: If any of generated EXDs is the same as the one that already exists"
                     "      it will not be overwritten anyway."
                     break
@@ -420,7 +420,7 @@ while ($true) {
             }
             $exd_path = "$EXD_DIR$SUB_PATH$exd_file_name.exd"
             $exd_exists = Test-Path $exd_path
-            if (!$SILENTLY_OVERWRITE -and $exd_exists) {
+            if (!$SILENTLY_OVERWRITE -and !$silently_overwrite_multipage -and $exd_exists) {
                 $_answer = $(Read-Host "$($base_name): $exd_path already exists. Overwrite? (Y/n)").ToLower()
                 switch ($_answer) {
                     "n" { continue }
@@ -472,11 +472,11 @@ while ($true) {
                 if ($INDEXES_CHOICE) {
                     $exd_index_hex = "{0:X}_" -f [uint32]$csv[$_row].Index
                     switch ($INDEXES_CHOICE) {
-                        1: { # Add index if doesn't exist
+                        1 { # Add index if doesn't exist
                             if ( $csv[$_row].Translation.StartsWith($exd_index_hex) ) { $exd_index_hex = "" }
                             break
                         }
-                        2: { # Remove index if exists
+                        2 { # Remove index if exists
                             if ( $csv[$_row].Translation.StartsWith($exd_index_hex) ) {
                                 $csv[$_row].Translation = $csv[$_row].Translation.Substring($exd_index_hex.Length)
                             }
@@ -519,7 +519,11 @@ while ($true) {
                     }
                 }
 
-                $null = $row_data.Add(@([uint32]$csv[$_row].Index, $result_bytes, $strings_offsets) )
+                $null = $row_data.Add(@{
+                    Index = [uint32]$csv[$_row].Index
+                    Bytes = $result_bytes
+                    OffsetsTable = $strings_offsets
+                })
             }
             if ($error_var) { $error_var = $false; break }
 
@@ -533,7 +537,7 @@ while ($true) {
                 #}
                 $_offset = $_i * $data_chunk_size
                 $_string_offsets_bytes = New-Object System.Collections.ArrayList
-                foreach ($_raw_data_piece in $row_data[$_i][2]) {
+                foreach ($_raw_data_piece in $row_data[$_i].OffsetsTable) {
                     $_string_offset_array = New-Object System.Collections.ArrayList
                     foreach ($_byte in $(Convert-HexStringToByteArray ("{0:X8}" -f $_raw_data_piece)) ) {
                         $null = $_string_offset_array.Add( $_byte )
@@ -572,8 +576,11 @@ while ($true) {
                 #    Write-Progress -Activity "Converting CSV to EXD" -CurrentOperation "Step 3. Preparing data table" -Status "$current_progress% Complete:" -PercentComplete $current_progress
                 #    $current_progress += 1
                 #}
-                $null = $index_offset_table.Add(@($row_data[$_i][0],$_current_offset) )
-                $_size = $data_chunk_size + $row_data[$_i][1].Length
+                $null = $index_offset_table.Add(@{
+                    Index = $row_data[$_i].Index
+                    Offset = $_current_offset
+                })
+                $_size = $data_chunk_size + $row_data[$_i].Bytes.Length
                 $_zeros = 4 - (2 + $_size) % 4     # Seems like padding is always aligned to 4
                 foreach ($_byte in $(Convert-HexStringToByteArray ("{0:X8}" -f ($_size + $_zeros)) ) ) {
                     $null = $data_table.Add( $_byte )
@@ -583,8 +590,8 @@ while ($true) {
                 for ($_j = 0; $_j -lt $data_chunk_size; $_j++) {
                     $null = $data_table.Add( $bin_bytes[(($_i)*$data_chunk_size + $_j)] )
                 }
-                if ($row_data[$_i][1].Count -gt 0) {
-                    foreach ($_byte in $row_data[$_i][1] ) {
+                if ($row_data[$_i].Bytes.Count -gt 0) {
+                    foreach ($_byte in $row_data[$_i].Bytes ) {
                         $null = $data_table.Add( $_byte )
                     }
                 }
@@ -600,11 +607,11 @@ while ($true) {
             $offset_table = [System.Collections.ArrayList]@()
             foreach ($_index_offset_piece in $index_offset_table)
             {
-                foreach ($_byte in $(Convert-HexStringToByteArray ("{0:X8}" -f $_index_offset_piece[0]) ) )
+                foreach ($_byte in $(Convert-HexStringToByteArray ("{0:X8}" -f $_index_offset_piece.Index) ) )
                 {
                     $null = $offset_table.Add( $_byte )
                 }
-                foreach ($_byte in $(Convert-HexStringToByteArray ("{0:X8}" -f $_index_offset_piece[1]) ) )
+                foreach ($_byte in $(Convert-HexStringToByteArray ("{0:X8}" -f $_index_offset_piece.Offset) ) )
                 {
                     $null = $offset_table.Add( $_byte )
                 }
@@ -647,6 +654,7 @@ while ($true) {
             Remove-Variable data_table
             $current_row += $page.PageSize
         }
+        $silently_overwrite_multipage = $false
         # I have no idea why progress bar doesn't work after calling and completing it once so I'll just unite it then
         Write-Progress -Activity "Converting CSV to EXD" -CurrentOperation "Working on '$base_name'" -Status "Completed" -Completed
     }
