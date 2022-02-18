@@ -241,13 +241,18 @@ while ($true) {
     "or enter 'exh' to get all EXH files in current folder and subfolders,"
     "or enter 'csv' to get all CSV files in current folder and subfolders."
     $input_answer = Read-Host ' '
-    if ( ($input_answer.ToLower() -eq 'exh') -or ($input_answer.ToLower() -eq 'csv') ) {
-        if ($input_answer.ToLower() -eq 'exh') {
-            $input_answer = Get-ChildItem ".\current\exh\*.exh" -Recurse
-            "$($input_answer.Count) EXHs found."
-        } else {
-            $input_answer = Get-ChildItem ".\current\csv\*.csv" -Recurse
-            "$($input_answer.Count) CSVs found."
+    if ( $input_answer -in ('exh','csv') ) {
+        switch ($input_answer.ToLower()) {
+            'exh' {
+                $input_answer = Get-ChildItem ".\current\exh\*.exh" -Recurse
+                "$($input_answer.Count) EXHs found."
+                break
+                }
+            'csv' {
+            	$input_answer = Get-ChildItem ".\current\csv\*.csv" -Recurse
+            	"$($input_answer.Count) CSVs found."
+                break
+            }
         }
         $_answer = $(Read-Host "Do you want to overwrite all EXD files that already exist? (Y/n)").ToLower()
         switch ($_answer) {
@@ -310,13 +315,18 @@ while ($true) {
         $EXH_DIR          = "$current_dir\exh"
         $SUB_PATH         = $input_file.FullName -replace '.*?\\bin|.*?\\csv|.*?\\exd_mod|.*?\\exd_source|.*?\\exh','' -replace "$($base_name).*",''
 
-        # Collect data from EXH file
+	# If EXH file is in 'exd_source' folder, move it to 'exh' folder and tell about it to user
+        if (Test-Path "$EXD_SOURCE_DIR$SUB_PATH$($base_name).exh") {
+            if (!$(Test-Path "$EXH_DIR$SUB_PATH")) { $null = New-Item "$EXH_DIR$SUB_PATH" -ItemType Directory }
+            Move-Item "$EXD_SOURCE_DIR$SUB_PATH$($base_name).exh" "$EXH_DIR$SUB_PATH$($base_name).exh" -Force
+            "$($base_name): EXH file was found in 'exd_source' - moved to 'exh' folder."
+        }
+	# Collect data from EXH
         $exh_path = "$EXH_DIR$SUB_PATH$($base_name).exh"
         if (!$(Test-Path -Path $exh_path)) {
-            "$($base_name): EXH file at $exh_path wasn't found."
-            "$($base_name): Skipping."
+            "$($base_name): EXH file at $exh_path wasn't found. Skipping.`n"
             continue
-        }
+        } else { "$($base_name): EXH file found at $exh_path." }
         while ($true) {
             $exh_bytes = [System.IO.File]::ReadAllBytes($exh_path)
             if ($exh_bytes) { break }
@@ -324,7 +334,7 @@ while ($true) {
             $exh_path
             "The file is probably locked by some program."
             $_answer = $(Read-Host "Press Enter to try again or enter 'skip' to skip").ToLower()
-            if ($_answer -eq 'skip') { continue }
+            if ($_answer -eq 'skip') { "$($base_name): Skipping.`n"; continue }
         }
         $data_chunk_size = [uint32](Convert-ByteArrayToHexString $exh_bytes[0x6..0x7] -Delimiter '' -Prepend '0x')
         $number_of_datasets = [uint32](Convert-ByteArrayToHexString $exh_bytes[0x8..0x9] -Delimiter '' -Prepend '0x')
@@ -348,8 +358,7 @@ while ($true) {
         # Read (or choose and read) CSV file
         $csv_files = Get-ChildItem -Path "$CSV_DIR$SUB_PATH$($base_name)*.csv" -Name
         if ($null -eq $csv_files) {
-            "$($base_name): .csv file that has '$base_name' in its name wasn't found."
-            "Skipping.`n"
+            "$($base_name): .csv file that has '$base_name' in its name wasn't found. Skipping.`n"
             continue
         }
         if ($csv_files.Count -gt 1) {
@@ -375,6 +384,7 @@ while ($true) {
             "$($base_name): $csv_files was found."
             $csv_path = "$CSV_DIR$SUB_PATH$csv_files"
         }
+        # Read the CSV
         while ($true) {
             $csv = Import-Csv $csv_path -Encoding UTF8
             if ($csv) { break }
@@ -384,7 +394,7 @@ while ($true) {
             $_answer = $(Read-Host "Press Enter to try again or enter 'skip' to skip").ToLower()
             if ($_answer -eq 'skip') { continue }
         }
-        
+        # Ask questions
         if (!$GLOBAL_CUSTOMIZE) {
             "$($base_name): Choose what to do with '<index>_' at the start of translation fields:"
             $_answer = $(Read-Host "Add if doesn't exist / Remove if exists / do Nothing (a/r/N)").ToLower()
@@ -397,7 +407,7 @@ while ($true) {
         if (!$SILENTLY_OVERWRITE -and ($page_table.Count -gt 1)) {
             $_answer = $(Read-Host "$($base_name): Several EXDs will be generated from this CSV. Overwrite them? (Y/n)").ToLower()
             switch ($_answer) {
-                "n" { continue }
+                "n" { $silently_overwrite_multipage = $false; continue }
                 default {
                     $silently_overwrite_multipage = $true
                     "Note: If any of generated EXDs is the same as the one that already exists"
@@ -415,7 +425,7 @@ while ($true) {
             $bin_path = "$BIN_DIR$SUB_PATH$exd_file_name.bin"
             if (!(Test-Path $bin_path)) {
                 "$($base_name): BIN file wasn't found at $bin_path."
-                "$($base_name): Skipping."
+                "$($base_name): Skipping.`n"
                 break
             }
             $exd_path = "$EXD_DIR$SUB_PATH$exd_file_name.exd"
@@ -625,17 +635,17 @@ while ($true) {
 
             # Step 6. Check everything and put everything in a new file
             if ($null -eq $exd_header) {
-                "Something went wrong. EXD header turned out empty.`n"
+                "$($base_name): Something went wrong. EXD header turned out empty.`n"
                 Remove-Variable data_table
                 continue
             }
             if ($null -eq $offset_table) {
-                "Something went wrong. Offset table turned out empty.`n"
+                "$($base_name): Something went wrong. Offset table turned out empty.`n"
                 Remove-Variable data_table
                 continue
             }
             if ($null -eq $data_table) {
-                "Something went wrong. Data table turned out empty.`n"
+                "$($base_name): Something went wrong. Data table turned out empty.`n"
                 Remove-Variable data_table
                 continue
             }
