@@ -514,28 +514,33 @@ while ($true) {
                     }
                 }
                 catch {
-                    # +2 because +1 for CSV headers and another +1 to start count from 1 instead of 0
-                    "$($base_name): Error at line $($_row + 2). There's most likely an error in tags. Skipping.`n"
+                    Write-Host "$($base_name): " -NoNewline
+                    Write-Host "Error at $($csv[$_row].context)." -ForegroundColor Red
                     $error_var = $true
-                    break
                 }
 
-                # Determining offsets to columns
-                $strings_offsets = New-Object System.Collections.ArrayList
-                $null = $strings_offsets.Add( 0 )    # First string always starts at offset 0
-                for ($_index = 0; $_index -lt $result_bytes.Count; $_index++) {
-                    if ($result_bytes[$_index] -eq [byte]0x00) {
-                        $null = $strings_offsets.Add($_index + 1)
+                if (!$error_var) {
+                    # Determining offsets to columns
+                    $strings_offsets = New-Object System.Collections.ArrayList
+                    $null = $strings_offsets.Add( 0 )    # First string always starts at offset 0
+                    for ($_index = 0; $_index -lt $result_bytes.Count; $_index++) {
+                        if ($result_bytes[$_index] -eq [byte]0x00) {
+                            $null = $strings_offsets.Add($_index + 1)
+                        }
                     }
-                }
 
-                $null = $row_data.Add(@{
-                    Index = [uint32]$csv[$_row].Index
-                    Bytes = $result_bytes
-                    OffsetsTable = $strings_offsets
-                })
+                    $null = $row_data.Add(@{
+                        Index = [uint32]$csv[$_row].Index
+                        Bytes = $result_bytes
+                        OffsetsTable = $strings_offsets
+                    })
+                }
             }
-            if ($error_var) { $error_var = $false; break }
+            if ($error_var) {
+                "$($base_name): It's recommended to check tags in this/these line(s). Skipping.`n"
+                $error_var = $false
+                break
+            }
 
             # Step 2. Edit BIN data
             #$current_progress = 0
