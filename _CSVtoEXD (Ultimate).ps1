@@ -494,7 +494,7 @@ while ($true) {
                             break
                         }
                     }
-                }
+                } else { $exd_index_hex = "" }
 
                 # Even though in theory we could avoid using byte arrays and pass a string instead,
                 # we're still going to get byte array to be safe of PowerShell conversions.
