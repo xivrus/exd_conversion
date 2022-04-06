@@ -461,7 +461,7 @@ while ($true) {
             if ($skip) { "$($base_name): Skipped"; continue }
         } else {
             "$($base_name): $($options[0]) collection was found."
-            $exd_files = Get-ChildItem -Path "$EXD_DIR$SUB_PATH$base_name*$($options[0])"
+            $exd_files = Get-ChildItem -Path "$EXD_DIR$SUB_PATH$($base_name)_*$($options[0])"
         }
         $exd_files = $exd_files | Sort-Object { [int]($_.BaseName -split '_')[-2] }
 
