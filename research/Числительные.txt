@@ -39,3 +39,5 @@ if (E8xx) {
 <var 08 E8xx ((<var 08 E2E8xx05 ((<var 09 E8xx (()) ((а)) ((а)) ((а)) /var>)) ((ов)) /var>)) ((ов)) /var>
 TEST:
 <var 08 E2E8xx01 ((0-)) ((<var 08 E2E8xx02 ((1)) ((<var 08 E2E8xx05 ((2-4)) ((5+)) /var>)) /var>)) /var>
+<var 08 E2E80301 ((ов)) ((<var 08 E2E80302 (()) ((<var 08 E2E80305 ((а)) ((ов)) /var>)) /var>)) /var> - Муж. род
+
