@@ -70,7 +70,7 @@ foreach ($new_csv in $new_csv_files) {
         [System.Collections.ArrayList]$old_csv_rows = Import-Csv $old_csv
         $new_csv_rows = Import-Csv $new_csv.FullName
         $changes_counter = 0
-        for ( ($i = 0), ($j = 0); $i -lt $new_csv_rows.Count; $i++, $j++) {
+        for ($i = 0; $i -lt $new_csv_rows.Count; $i++) {
             if ($i -ge $old_csv_rows.Count) {
                 $null = $old_csv_rows.Add($new_csv_rows[$i])
                 $null = $changelog_csv.Add(
@@ -85,36 +85,53 @@ foreach ($new_csv in $new_csv_files) {
                 continue
             }
 
-            $old_index = [uint32]$old_csv_rows[$j].Index
+            $old_index = [uint32]$old_csv_rows[$i].Index
             $new_index = [uint32]$new_csv_rows[$i].Index
             if ($old_index -gt $new_index) {
-                $null = $old_csv_rows.Insert($j, $new_csv_rows[$i])
+                $null = $old_csv_rows.Insert($i, $new_csv_rows[$i])
+                $null = $changelog_csv.Add(
+                    [PSCustomObject]@{
+                        'File Name' = $new_csv.Name
+                        'Old Translation String' = 'N/A'
+                        'Old Source String' = 'N/A'
+                        'New String' = $new_csv_rows[$i].Source
+                    }
+                )
                 $changes_counter++
                 continue
             }
             if ($old_index -lt $new_index) {
-                $old_csv_rows.RemoveAt($j)
-                $old_index = [uint32]$old_csv_rows[$j].Index
+                $null = $changelog_csv.Add(
+                    [PSCustomObject]@{
+                        'File Name' = $new_csv.Name
+                        'Old Translation String' = $old_csv_rows[$i].Translation
+                        'Old Source String' = $old_csv_rows[$i].Source
+                        'New String' = '[Removed]'
+                    }
+                )
+                $old_csv_rows.RemoveAt($i)
+                $changes_counter++
+                $i--
                 continue
             }
 
-            if ($old_csv_rows[$j].Index -ne $new_csv_rows[$i].Index) {
-                "String IDs do not match at $($old_csv.Name), $j and $($new_csv.Name), $i" | Tee-Object -FilePath $SCRIPT_LOG_PATH -Append | Write-Host
+            if ($old_csv_rows[$i].Index -ne $new_csv_rows[$i].Index) {
+                "String IDs do not match at $($old_csv.Name), line $i" | Tee-Object -FilePath $SCRIPT_LOG_PATH -Append | Write-Host
                 "The script will now exit. Please resolve this issue manually and try again." | Tee-Object -FilePath $SCRIPT_LOG_PATH -Append | Write-Host
                 pause
                 exit
             }
-            if ($old_csv_rows[$j].Source -ne $new_csv_rows[$i].Source) {
+            if ($old_csv_rows[$i].Source -ne $new_csv_rows[$i].Source) {
                 $null = $changelog_csv.Add(
                     [PSCustomObject]@{
                         'File Name' = $new_csv.Name
-                        'Old Translation String' = $old_csv_rows[$j].Translation
-                        'Old Source String' = $old_csv_rows[$j].Source
+                        'Old Translation String' = $old_csv_rows[$i].Translation
+                        'Old Source String' = $old_csv_rows[$i].Source
                         'New String' = $new_csv_rows[$i].Source
                     }
                 )
-                $old_csv_rows.RemoveAt($j)
-                $null = $old_csv_rows.Insert($j, $new_csv_rows[$i])
+                $old_csv_rows.RemoveAt($i)
+                $null = $old_csv_rows.Insert($i, $new_csv_rows[$i])
                 $changes_counter++
             }
         }
@@ -124,9 +141,6 @@ foreach ($new_csv in $new_csv_files) {
         } else {
             "$SUB_PATH$($old_csv.Name) - No changes, left as is." | Tee-Object -FilePath $SCRIPT_LOG_PATH -Append | Write-Host
         }
-        
-        $new_csv_rows = $null
-        $old_csv_rows = $null
     } else {
         if (!$(Test-Path "$CURRENT_CSV_DIR_PATH$SUB_PATH")) { $null = New-Item "$CURRENT_CSV_DIR_PATH$SUB_PATH" -ItemType Directory }
         $null = Copy-Item $new_csv "$CURRENT_CSV_DIR_PATH$SUB_PATH$($new_csv.Name)"$null = $changelog_csv.Add(
