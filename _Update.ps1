@@ -92,9 +92,10 @@ foreach ($new_csv in $new_csv_files) {
                 $changes_counter++
                 continue
             }
-            while ($old_index -lt $new_index) {
+            if ($old_index -lt $new_index) {
                 $old_csv_rows.RemoveAt($j)
                 $old_index = [uint32]$old_csv_rows[$j].Index
+                continue
             }
 
             if ($old_csv_rows[$j].Index -ne $new_csv_rows[$i].Index) {
