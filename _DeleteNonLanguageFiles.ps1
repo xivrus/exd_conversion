@@ -1,4 +1,4 @@
-$EXCLUDE_EXTENSIONS = @('.exh','.ps1')
+$EXCLUDE_EXTENSIONS = @('.exh','.ps1','.psm1')
 $EXCLUDE_FILES = @('item.exh')
 
 $files = Get-ChildItem -Recurse -File
