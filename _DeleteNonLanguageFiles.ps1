@@ -1,13 +1,19 @@
-$files = Get-ChildItem -Recurse
-for ($i = 0; $i -lt $files.Count; $i++) {
-    if ($files[$i].Extension -notin @('.exh','.ps1') -and $files[$i].Name -notmatch '_[A-z]{2}\.exd$') {
-        $ending = (Select-String -InputObject $files[$i].Name -Pattern '_\d+\.exd').Matches.Value
+$EXCLUDE_EXTENSIONS = @('.exh','.ps1')
+$EXCLUDE_FILES = @('item.exh')
+
+$files = Get-ChildItem -Recurse -File
+
+foreach ($file in $files) {
+    if ($file.Extension -notin $EXCLUDE_EXTENSIONS -and
+      $file.Name -notmatch '_[A-z]{2}\.exd$'-and
+      $file.Name -notin $EXCLUDE_FILES) {
+        $ending = (Select-String -InputObject $file.Name -Pattern '_\d+\.exd').Matches.Value
         if ($ending) {
-            $exh_path = $files[$i].FullName.Replace($ending, '.exh')
+            $exh_path = $file.FullName.Replace($ending, '.exh')
             if (Test-Path $exh_path) { Remove-Item $exh_path; "Deleted $exh_path" }
         }
-        Remove-Item $files[$i].FullName
-        "Deleted $($files[$i].FullName)"
+        Remove-Item $file.FullName
+        "Deleted $($file.FullName)"
     }
 }
 pause
