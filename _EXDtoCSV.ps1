@@ -22,7 +22,7 @@ if ($error_var) {
 }
 
 if ($args.Count -eq 0) {
-    $host.UI.RawUI.WindowTitle = "EXD -> CSV - Weblate"
+    $host.UI.RawUI.WindowTitle = "EXD -> CSV"
 }
 
 New-Variable -Name "UNIX_NL_BYTE" -Value ([byte]0x0A) -Option Constant -ErrorAction SilentlyContinue
@@ -52,8 +52,8 @@ New-Variable -Name "VAR_START_BYTE" -Value ([byte]0x02) -Option Constant -ErrorA
 
     $EXH_SOURCE_DIR = "$PROJECT_DIR\exh_source"
     $EXD_SOURCE_DIR = "$PROJECT_DIR\exd_source"
-    $EXH_MOD_DIR    = "$PROJECT_DIR\exh_mod_"
-    $EXD_MOD_DIR    = "$PROJECT_DIR\exd_mod_"
+    $EXH_MOD_DIR    = "$PROJECT_DIR\exh_mod"
+    $EXD_MOD_DIR    = "$PROJECT_DIR\exd_mod"
     $CSV_DIR        = "$PROJECT_DIR\csv"
 
     if ($args.Count -gt 0) {
