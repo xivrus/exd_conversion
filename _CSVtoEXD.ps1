@@ -22,7 +22,7 @@ if ($error_var) {
 }
 
 if ($args.Count -eq 0) {
-    $host.UI.RawUI.WindowTitle = "CSV -> EXD - Weblate"
+    $host.UI.RawUI.WindowTitle = "CSV -> EXD"
 }
 
 New-Variable -Name "UNIX_NL_BYTE" -Value ([byte]0x0A) -Option Constant -ErrorAction SilentlyContinue
