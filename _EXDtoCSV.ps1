@@ -126,6 +126,7 @@ New-Variable -Name "VAR_START_BYTE" -Value ([byte]0x02) -Option Constant -ErrorA
         $GLOBAL_SETTINGS = $false
         $GLOBAL_OVERWRITE = $false
         $GLOBAL_COPY_SOURCE_TO_TRANSLATION = $true
+		$GLOBAL_STRING_INDEXES_CHOICE = $false
     
         $_answer = Read-Host "Do you want to make choices for all file? (Y/n)"
         if ( $_answer.ToLower() -ne 'n' ) {
@@ -143,6 +144,15 @@ New-Variable -Name "VAR_START_BYTE" -Value ([byte]0x02) -Option Constant -ErrorA
             if ( $_answer.ToLower() -eq 'n' ) {
                 $GLOBAL_COPY_SOURCE_TO_TRANSLATION = $false
             }
+
+			if ( $GLOBAL_COPY_SOURCE_TO_TRANSLATION ) {
+				if ( $COPY_SOURCE_TO_TRANSLATION ) {
+					$_answer = Read-Host "Do you want to add '<index>_' at the start of 'Translation' fields? (y/N)"
+					if ( $_answer.ToLower() -eq 'y' ) {
+						$GLOBAL_STRING_INDEXES_CHOICE = $true
+					}
+				}
+			}
         }
     }
 
@@ -197,11 +207,19 @@ New-Variable -Name "VAR_START_BYTE" -Value ([byte]0x02) -Option Constant -ErrorA
             }
 
             $COPY_SOURCE_TO_TRANSLATION = $true
-            "Do you want to copy source to translation?"
-            $_answer = Read-Host "Choosing 'n' will leave 'Translation' field empty (Y/n)"
+            "$($base_name): Do you want to copy source to translation?"
+            $_answer = Read-Host "$($base_name): Choosing 'n' will leave 'Translation' field empty (Y/n)"
             if ( $_answer.ToLower() -eq 'n' ) {
                 $COPY_SOURCE_TO_TRANSLATION = $false
             }
+
+			$STRING_INDEXES_CHOICE = $false
+			if ( $COPY_SOURCE_TO_TRANSLATION ) {
+				$_answer = Read-Host "$($base_name): Do you want to add '<index>_' at the start of 'Translation' field? (y/N)"
+				if ( $_answer.ToLower() -eq 'y' ) {
+					$STRING_INDEXES_CHOICE = $true
+				}
+			}
         }
         
         if (Test-Path -Path $csv_path) {
@@ -316,11 +334,22 @@ New-Variable -Name "VAR_START_BYTE" -Value ([byte]0x02) -Option Constant -ErrorA
                         $string_bytes.InsertRange($_col_sep_index, $COLUMN_SEPARATOR_BYTE)
                         $_col_sep_counter--
                     }
+
+					$exd_index_hex = ''
+					if ( $GLOBAL_STRING_INDEXES_CHOICE -or $STRING_INDEXES_CHOICE ) {
+                        $exd_index_hex = "{0:X}_" -f $row.Key
+                    }
+
                     $result = [System.Text.Encoding]::UTF8.GetString($string_bytes)
+
+					$translation = ''
+					if ( $GLOBAL_COPY_SOURCE_TO_TRANSLATION -or $COPY_SOURCE_TO_TRANSLATION ) {
+						$translation = $exd_index_hex + $result
+					}
 
                     $csv.Add( [PSCustomObject]@{
                         Index = "0x{0:X8}" -f $row.Key
-                        Translation = if ($GLOBAL_COPY_SOURCE_TO_TRANSLATION -or $COPY_SOURCE_TO_TRANSLATION) { $result } else { '' }
+                        Translation = $translation
                         Source = $result
                     } )
 
