@@ -531,11 +531,16 @@ while ($true) {
 
                     if ($csv[$csv_current_row].target.Length -gt 0) {
                         try {
-                            if ( $quest_add_index_flag -and $csv[$csv_current_row].target.StartsWith('TEXT_') ) {
-                                # Один из переводчиков попросил это. Также по его просьбе индекс именно в десятичном формате, чтобы
-                                # совпадал с номером строки в Weblate. Когда EXDtoCSV перестанет включать в CSV-файлы пустые строки,
-                                # с этим надо будет что-то делать.
-                                $string = $csv[$csv_current_row].target -replace '<tab>',("<tab>{0}{1}_" -f $file_index_hex, [int32] $csv[$csv_current_row].context)
+                            if ( $quest_add_index_flag ) {
+								$exd_index_dec = "{0}_" -f ([int32] $csv[$csv_current_row].context + 1)
+								if ( $csv[$csv_current_row].target.StartsWith('TEXT_') ) {
+                                	# Один из переводчиков попросил это. Также по его просьбе индекс именно в десятичном формате, чтобы
+                                	# совпадал с номером строки в Weblate. Когда EXDtoCSV перестанет включать в CSV-файлы пустые строки,
+                                	# с этим надо будет что-то делать.
+                                	$string = $csv[$csv_current_row].target -replace '<tab>',("<tab>{0}{1}_" -f $file_index_hex, $exd_index_dec)
+								} else {
+                                	$string = $file_index_hex + $exd_index_dec + $csv[$csv_current_row].target
+								}
                             } else {
                                 $string = $file_index_hex + $exd_index_hex + $csv[$csv_current_row].target
                             }
