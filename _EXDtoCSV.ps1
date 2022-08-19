@@ -146,11 +146,9 @@ New-Variable -Name "VAR_START_BYTE" -Value ([byte]0x02) -Option Constant -ErrorA
             }
 
 			if ( $GLOBAL_COPY_SOURCE_TO_TRANSLATION ) {
-				if ( $COPY_SOURCE_TO_TRANSLATION ) {
-					$_answer = Read-Host "Do you want to add '<index>_' at the start of 'Translation' fields? (y/N)"
-					if ( $_answer.ToLower() -eq 'y' ) {
-						$GLOBAL_STRING_INDEXES_CHOICE = $true
-					}
+				$_answer = Read-Host "Do you want to add '<index>_' at the start of 'Translation' fields? (y/N)"
+				if ( $_answer.ToLower() -eq 'y' ) {
+					$GLOBAL_STRING_INDEXES_CHOICE = $true
 				}
 			}
         }
