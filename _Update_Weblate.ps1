@@ -383,9 +383,9 @@ if (New-Item ".\logs" -ItemType Directory -ErrorAction SilentlyContinue) {
 $log = ".\logs\Update_{0:yyyy-MM-ddTHH-mm-ss}.log" -f $total_start_time
 
 "Copying current CSV, source EXHs and EXDs to 'old\x.xx' folder..."
-Copy-Item "$PROJECT_PATH\$CURRENT_DIR\csv"        "$PROJECT_PATH\$OLD_DIR\x.xx\csv"        -Recurse -Force
-Copy-Item "$PROJECT_PATH\$CURRENT_DIR\exh_source" "$PROJECT_PATH\$OLD_DIR\x.xx\exh_source" -Recurse -Force
-Copy-Item "$PROJECT_PATH\$CURRENT_DIR\exd_source" "$PROJECT_PATH\$OLD_DIR\x.xx\exd_source" -Recurse -Force
+Copy-Item "$PROJECT_PATH\$CURRENT_DIR\csv\*"      "$PROJECT_PATH\$OLD_DIR\x.xx\csv\exd\" -Recurse -Force -Exclude ('README.md', '.git')
+Copy-Item "$PROJECT_PATH\$CURRENT_DIR\exh_source" "$PROJECT_PATH\$OLD_DIR\x.xx\" -Recurse -Force
+Copy-Item "$PROJECT_PATH\$CURRENT_DIR\exd_source" "$PROJECT_PATH\$OLD_DIR\x.xx\" -Recurse -Force
 "Done."
 
 $changelog_table = @{}
