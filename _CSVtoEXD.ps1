@@ -1,4 +1,4 @@
-﻿using module .\lib\EXHF.psm1
+using module .\lib\EXHF.psm1
 using module .\lib\EXDF.psm1
 
 $INCLUDE_LIST = @(
@@ -548,7 +548,7 @@ New-Variable -Name "VAR_START_BYTE" -Value ([byte]0x02) -Option Constant -ErrorA
                 }
             }
 
-            if (-not $compare_with_cache -or $cache_input) {
+            if ( $cache_input ) {
                 if (New-Item $(Split-Path $csv_cache_path -Parent) -ItemType Directory -ErrorAction SilentlyContinue) {
                     Write-Verbose "$($base_name): Created folder $(Split-Path $csv_cache_path -Parent)" *>&1 | Tee-Object $log -Append
                 }
