@@ -181,6 +181,7 @@ function Update-Csv {
         
             if ($changelog) {
                 $curr_csv_rows | Export-Csv $CurrentCsv -NoTypeInformation -Encoding UTF8
+				Remove-BomFromFile -Path $CurrentCsv
                 "$file_name - Done. $($changelog.Count) lines changed." | Tee-Object $log -Append | Write-Host
             } else {
                 $changelog = @()
@@ -341,5 +342,4 @@ if ($changelog_table.Count) {
 
 $time_diff = $($(Get-Date) - $total_start_time)
 Write-Host ("Done in {0:hh}:{0:mm}:{0:ss}.{0:fff}`n" -f $time_diff) -ForegroundColor Green *>&1 | Tee-Object $log -Append
-"Don't forget to rename 'x.xx' in 'old' folder to appropriate version numbers."
 Pause
