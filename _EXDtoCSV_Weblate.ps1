@@ -369,7 +369,7 @@ New-Variable -Name "VAR_START_BYTE" -Value ([byte]0x02) -Option Constant -ErrorA
         '' *>&1 | Tee-Object $log -Append
     }
     # Compress the log file
-    Compress-Archive -Path $log -DestinationPath "$log.zip" -CompressionLevel Optimal
+    Compress-Archive -Path $log -DestinationPath "$log.zip" -CompressionLevel Optimal -Force
     Remove-Item $log
 
     if ($args.Count -gt 0) {
