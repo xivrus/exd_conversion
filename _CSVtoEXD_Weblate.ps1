@@ -1,4 +1,4 @@
-using module .\lib\EXHF.psm1
+﻿using module .\lib\EXHF.psm1
 using module .\lib\EXDF.psm1
 
 $INCLUDE_LIST = @(
@@ -392,6 +392,7 @@ while ($true) {
 
             if ( $quest_add_index_flag ) {
                 $compare_with_cache = $false
+				Remove-Item -Path $csv_cache_path -ErrorAction Ignore
             }
 
             if ($compare_with_cache) {
@@ -660,7 +661,7 @@ while ($true) {
                 }
             }
 
-            if (-not $compare_with_cache -or $cache_input) {
+            if ( $cache_input ) {
                 if (New-Item $(Split-Path $csv_cache_path -Parent) -ItemType Directory -ErrorAction SilentlyContinue) {
                     Write-Verbose "$($base_name): Created folder $(Split-Path $csv_cache_path -Parent)" *>&1 | Tee-Object $log -Append
                 }
