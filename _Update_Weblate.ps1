@@ -396,7 +396,8 @@ foreach ($lang in $OFFICIAL_LANGUAGES) {
 try {
 
 foreach ($new_exh_file in $new_exh_list) {
-    $sub_path = $new_exh_file.FullName.Replace("$PROJECT_PATH\$NEW_DIR\exh_source\", '') -replace "\\$($new_exh_file.Name)`$"
+    $sub_path = $new_exh_file.FullName.Replace("$PROJECT_PATH\$NEW_DIR\exh_source\", '').
+		Replace("$PROJECT_PATH\$NEW_DIR\exd_source\", '') -replace "\\$($new_exh_file.Name)`$"
     $base_name = $new_exh_file.BaseName
 
     $current_csv_dir_path = "$PROJECT_PATH\$CURRENT_DIR\csv\$sub_path\$base_name"
