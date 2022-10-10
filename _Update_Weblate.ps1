@@ -1,4 +1,4 @@
-$INCLUDE_LIST = @(
+﻿$INCLUDE_LIST = @(
     '.\lib\_Settings.ps1',
     '.\lib\Engine.ps1'
 )
@@ -209,7 +209,7 @@ try {
             # Case 1
             # This is the only case where we can safely reference the change on translation server
             if ($curr_csv_rows[$row_count].source -ne $new_csv_rows[$row_count].source) {
-                $component = $CurrentCsv.FullName.Replace("$PROJECT_PATH\$CURRENT_DIR\csv\exd\", '') `
+				$component = $CurrentCsv.FullName.Replace("$PROJECT_PATH\$CURRENT_DIR\csv\exd\", '') `
                     -replace '\\[^\\]*$' -replace '\\','-'
                 $lang = $CurrentCsv.BaseName
                 $query = $new_csv_rows[$row_count].context
@@ -423,27 +423,35 @@ foreach ($new_exh_file in $new_exh_list) {
     }
 
     $conversion_flags = @{}
-    $remove_cache_flag = $false
+    $remove_cache_flag_exh = $false
 
     $new_exd_list = Get-ChildItem "$new_exd_dir_path\$($base_name)_*.exd"
     $current_exh_path = "$current_exh_dir_path\$base_name.exh"
 
     # Comparison 1. Compare EXH
     # If EXH was changed then we must copy all new files and re-convert everything.
-    if (Compare-Files $new_exh_file $current_exh_path) {
+	if (Compare-Files $new_exh_file $current_exh_path) {
         "{0} - No changes" -f $new_exh_file.Name *>&1 | Tee-Object $log -Append
     } else {
-        $current_exh_file = Get-ChildItem $current_exh_path
+		if (-not (Test-Path $current_exh_path) ) {
+			New-Item $(Split-Path $current_exh_path) -ItemType Directory -ErrorAction SilentlyContinue -Force
+			Copy-Item -Path $new_exh_file -Destination $current_exh_path -Force
+			"\{0}\{1} - New EXH file" -f $sub_path, $new_exh_file.Name *>&1 | Tee-Object $log -Append
+		} else {
+			"\{0}\{1} - EXH changed" -f $sub_path, $new_exh_file.Name *>&1 | Tee-Object $log -Append
+		}
+		
+		$current_exh_file = Get-ChildItem $current_exh_path
         Copy-Item -Path $new_exh_file -Destination $current_exh_file -Force
 
         foreach ($new_exd_file in $new_exd_list) {
-            $current_exd_file = Get-ChildItem "$current_exd_dir_path\$($new_exd_file.Name)"
-            Copy-Item -Path $new_exd_file -Destination $current_exd_file -Force
+            $current_exd_path = "$current_exd_dir_path\$($new_exd_file.Name)"
+			New-Item $(Split-Path $current_exd_path) -ItemType Directory -ErrorAction SilentlyContinue -Force
+            Copy-Item -Path $new_exd_file -Destination $current_exd_path -Force
         }
 
         $conversion_flags.en = $true
-        $remove_cache_flag = $true
-        "\{0}\{1} - EXH changed" -f $sub_path, $new_exh_file.Name *>&1 | Tee-Object $log -Append
+        $remove_cache_flag_exh = $true
     }
 
     # Comparison 2. Compare all EXDs
@@ -506,16 +514,23 @@ foreach ($new_exh_file in $new_exh_list) {
                         $(Update-Csv -CurrentCsvPath $current_csv -NewCsv $new_en_csv -LanguageCode $lang)
                     )
 
-                    if ($lang -eq 'en' -and $changelog_size_before -lt $changelog_table.$lang.Count) {
-                        $remove_cache_flag = $true
+					$remove_cache_flag_lang = $false
+                    if ( $changelog_size_before -eq $changelog_table.$lang.Count ) {
+                        $remove_cache_flag_lang = $true
                     }
-                }
 
-                if ($remove_cache_flag) {
-                    $csv_cache_path = "$PROJECT_PATH\$CURRENT_DIR\exd_mod_$lang\csv_cache\$sub_path\$($base_name)_cache.csv"
-                    Write-Warning "$($base_name): Either EXH changed, or EN changed w/o changing strings - deleting CSV cache at`n  $csv_cache_path" `
-                        *>&1 | Tee-Object $log -Append
-                    Remove-Item -Path $csv_cache_path
+					$csv_cache_path = "$PROJECT_PATH\$CURRENT_DIR\exd_mod_$lang\csv_cache\$sub_path\$($base_name)_cache.csv"
+					if ( Test-Path $csv_cache_path ) {
+						if ( $remove_cache_flag_exh ) {
+							$reason = 'EXH changed'
+						}
+						if ( $remove_cache_flag_lang ) {
+							$reason = 'EN changed w/o changing strings'
+							$remove_cache_flag_lang = $false
+						}
+						Write-Warning "$($base_name): $reason - deleting CSV cache at`n  $csv_cache_path" *>&1 | Tee-Object $log -Append
+						Remove-Item -Path $csv_cache_path
+					}
                 }
             }
         }
