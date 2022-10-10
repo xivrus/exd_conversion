@@ -281,6 +281,7 @@ try {
 
         if ($changelog) {
             $curr_csv_rows | Export-Csv $CurrentCsv -NoTypeInformation -Encoding UTF8
+			Remove-BomFromFile -Path $CurrentCsv
             "$file_name - Done. $($changelog.Count) lines changed." | Tee-Object $log -Append | Write-Host
         } else {
             $changelog = @()
@@ -291,16 +292,18 @@ try {
         # ask it to return an empty array, it will return $null instead.
         Return ,$changelog
     }
-    $null = New-Item "$current_csv_dir_path\$sub_path\$base_name" -ItemType Directory -ErrorAction Ignore
-    $null = Copy-Item $NewCsv "$current_csv_dir_path\$sub_path\$base_name\$($NewCsv.Name)"
-    $curr_csv_rows = @(Import-Csv $CurrentCsv)
+    $null = New-Item $current_csv_dir_path -ItemType Directory -ErrorAction Ignore
+    $null = Copy-Item $NewCsv "$current_csv_dir_path\$($NewCsv.Name)"
+
     if ($LanguageCode -notin $OFFICIAL_LANGUAGES) {
+		$curr_csv_rows = @(Import-Csv $CurrentCsvPath)
         foreach ($row in $curr_csv_rows) {
             $row.fuzzy = 'True'
         }
+		$curr_csv_rows | Export-Csv $CurrentCsvPath -NoTypeInformation -Encoding UTF8
+		Remove-BomFromFile -Path $CurrentCsvPath
     }
-    $curr_csv_rows | Export-Csv $CurrentCsv -NoTypeInformation -Encoding UTF8
-    Remove-BomFromFile -Path $CurrentCsv
+
     if ($LanguageCode -eq 'en') {
         $null = $changelog.Add(
             [PSCustomObject]@{
