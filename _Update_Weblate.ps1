@@ -1,4 +1,4 @@
-﻿$INCLUDE_LIST = @(
+$INCLUDE_LIST = @(
     '.\lib\_Settings.ps1',
     '.\lib\Engine.ps1'
 )
@@ -84,9 +84,15 @@ try {
         $curr_csv_rows = [System.Collections.ArrayList]@(Import-Csv $CurrentCsv)
         $new_csv_rows = @(Import-Csv $NewCsv)
 
+		# Clean translation of sublanguage.
+		#  OR
         # Add index to new target strings for components listed in $UPDATE_ADD_INDEX.
         # That way any changed or new strings will have index on them in the game.
-        if ($NewCsv.Directory.Name -in $UPDATE_ADD_INDEX -and $LanguageCode -notin $OFFICIAL_LANGUAGES) {
+		if ( $SUBLANGUAGES.$LanguageCode ) {
+			foreach ( $row in $new_csv_rows ) {
+				$row.target = ''
+			}
+		} elseif ($NewCsv.Directory.Name -in $UPDATE_ADD_INDEX -and $LanguageCode -notin $OFFICIAL_LANGUAGES) {
             foreach ($row in $new_csv_rows) {
                 $index_hex = "{0:X}_" -f [uint32]$row.context
                 if (!$row.target.StartsWith($index_hex)) {
