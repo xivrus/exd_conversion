@@ -1,4 +1,4 @@
-using module .\lib\EXHF.psm1
+﻿using module .\lib\EXHF.psm1
 using module .\lib\EXDF.psm1
 
 $INCLUDE_LIST = @(
@@ -401,7 +401,7 @@ New-Variable -Name "VAR_START_BYTE" -Value ([byte]0x02) -Option Constant -ErrorA
                 if ($ADD_FILE_NUMBER) {
                     $file_index_hex = "{0:X}_" -f $file_num
                 } else {
-                    $file_index_hex = ""
+                    $file_index_hex = ''
                 }
 
                 $1_percent = $csv.Count / 100
@@ -411,12 +411,12 @@ New-Variable -Name "VAR_START_BYTE" -Value ([byte]0x02) -Option Constant -ErrorA
                             $exd_index_hex = ''
                             break
                         }
-                        1 { # Add index if it doesn't exist
+                        1 { # Add index if doesn't exist
                             $exd_index_hex = "{0:X}_" -f [int32]$csv[$csv_current_row].Index
                             if ( $csv[$csv_current_row].Translation.StartsWith($exd_index_hex) ) { $exd_index_hex = '' }
                             break
                         }
-                        2 { # Remove index if it exists
+                        2 { # Remove index if exists
                             $exd_index_hex = "{0:X}_" -f [int32]$csv[$csv_current_row].Index
                             if ( $csv[$csv_current_row].Translation.StartsWith($exd_index_hex) ) {
                                 $csv[$csv_current_row].Translation = $csv[$csv_current_row].Translation.Substring($exd_index_hex.Length)
