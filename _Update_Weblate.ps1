@@ -355,6 +355,7 @@ if (-not $token) {
 $headers = @{
     Authorization = "Bearer {0}" -f $token
 }
+# TODO: Take this out into a config
 $base_uri = ''
 
 
