@@ -118,6 +118,8 @@ function Convert-VariablesToTags
     # TODO: Figure out how referencing works and make it pretty.
     $ignore_FF_counter = 0
     
+try{
+
     for ($i = 0; $i -lt $ByteArray.Count; $i++) {
         while ( $depth_memory[-1] -and $i -eq ($depth_memory[-1] + $offset) ) {
             $depth_memory.RemoveAt($depth_memory.Count-1)
@@ -205,6 +207,8 @@ function Convert-VariablesToTags
                                     $var_string = [byte[]](
                                         0x3C, 0x63, 0x6F, 0x6C, 0x6F, 0x72, 0x32, 0x20, 0x23,   # "<color2 #RRGGBB>"
                                         $_r[0], $_r[1], $_g[0], $_g[1], $_b[0], $_b[1], 0x3E)
+									
+									$replace_var = $true
                                     break
                                 }
                                 0xE9 {   # Start - Set color from player parameter
@@ -215,13 +219,25 @@ function Convert-VariablesToTags
                                     $var_string = [byte[]](
                                         0x3C, 0x63, 0x6F, 0x6C, 0x6F, 0x72, 0x32, 0x20,   # "<color2 E9XX>"
                                         0x45, 0x39, $_param[0], $_param[1], 0x3E)
+									
+									$replace_var = $true
                                     break
                                 }
                                 0xEC {   # End
                                     $var_string = [byte[]](0x3C, 0x2F, 0x63, 0x6F, 0x6C, 0x6F, 0x72, 0x32, 0x3E)  # "</color2>"
+									$replace_var = $true
+									break
                                 }
+								default {
+									$ignore_FF_counter = 1
+									$type_byte_hex = @(
+										[char]( "{0:X}" -f [uint32][System.Math]::Floor($type_byte / 0x10) ),
+										[char]( "{0:X}" -f [uint32]($type_byte % 0x10) )
+									)
+									$var_string = [byte[]](0x3C, 0x76, 0x61, 0x72, 0x20, $type_byte_hex[0], $type_byte_hex[1], 0x20) # "<var XX " where XX is variable type
+									$replace_var = $false	
+								}
                             }
-                            $replace_var = $true
                             break
                         }
                         0x14    {   # Alternative text glow change
@@ -244,13 +260,24 @@ function Convert-VariablesToTags
                                     $var_string = [byte[]](
                                         0x3C, 0x67, 0x6C, 0x6F, 0x77, 0x32, 0x20, 0x23,   # "<glow2 #RRGGBB>"
                                         $_r[0], $_r[1], $_g[0], $_g[1], $_b[0], $_b[1], 0x3E)
+									
+									$replace_var = $true
                                     break
                                 }
                                 0xEC {   # End
                                     $var_string = [byte[]](0x3C, 0x2F, 0x67, 0x6C, 0x6F, 0x77, 0x32, 0x3E)  # "</glow2>"
+									$replace_var = $true
                                 }
+								default {
+									$ignore_FF_counter = 1
+									$type_byte_hex = @(
+										[char]( "{0:X}" -f [uint32][System.Math]::Floor($type_byte / 0x10) ),
+										[char]( "{0:X}" -f [uint32]($type_byte % 0x10) )
+									)
+									$var_string = [byte[]](0x3C, 0x76, 0x61, 0x72, 0x20, $type_byte_hex[0], $type_byte_hex[1], 0x20) # "<var XX " where XX is variable type
+									$replace_var = $false		
+								}
                             }
-                            $replace_var = $true
                             break
                         }
                         0x49    {   # Text color change
@@ -305,7 +332,7 @@ function Convert-VariablesToTags
                             if ($replace_var) {
                                 $ByteArray.RemoveRange($i, $size+4)
                                 $ByteArray.InsertRange($i, $var_string)
-                                $offset += $var_string.Count - 4
+                                $offset += $var_string.Count - $size - 4
                                 $looking_for_02 = $true
                             } else {
                                 $depth_memory.Add( $i + $size+3 - $offset )
@@ -325,9 +352,9 @@ function Convert-VariablesToTags
                     $i += 2
                 }
             }
-        } elseif ( $ByteArray[$i] -eq 0xFF -and $ByteArray[$i+1] -ne 0xFF -and -not $ignore_FF_counter) {
+        } elseif ( $ByteArray[$i] -eq 0xFF -and $ByteArray[$i+1] -ne 0xFF -and -not $ignore_FF_counter ) {
             $looking_for_02 = $true
-        
+			
             # First byte of the size
             switch ($ByteArray[$i+1]) {
                 0xF2 {
@@ -361,7 +388,7 @@ function Convert-VariablesToTags
                     $offset -= 2
                 }
             }
-        
+			
             if ($ByteArray[$i-1] -eq 0x20) {   # " "
                 $ByteArray.InsertRange($i, [byte[]](      0x28, 0x28))   #  "(("
                 $offset += 2
@@ -383,6 +410,10 @@ function Convert-VariablesToTags
             $i += 1
         }
     }
+}
+catch {
+	$_
+}
     
     return ,$ByteArray
 }
