@@ -84,7 +84,7 @@ try {
         $curr_csv_rows = [System.Collections.ArrayList]@(Import-Csv $CurrentCsv)
         $new_csv_rows = @(Import-Csv $NewCsv)
 
-		# Clean translation of sublanguage.
+		# Clean sublanguage of translations.
 		#  OR
         # Add index to new target strings for components listed in $UPDATE_ADD_INDEX.
         # That way any changed or new strings will have index on them in the game.
@@ -472,10 +472,6 @@ foreach ($new_exh_file in $new_exh_list) {
                 Copy-Item -Path $new_exd_file -Destination $current_exd_file -Force
                 $conversion_flags.$lang = $true
                 "\{0}\{1} - {2} changed" -f $sub_path, $new_exd_file.Name, $lang.ToUpper() *>&1 | Tee-Object $log -Append
-
-                if ($lang -eq 'en') {
-                    break
-                }
             }
         }
     }
