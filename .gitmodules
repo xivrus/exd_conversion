@@ -1,0 +1,3 @@
+[submodule "current/csv"]
+	path = current/csv
+	url = https://github.com/xivrus/xiv_ru_weblate.git
