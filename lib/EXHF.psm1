@@ -266,7 +266,7 @@ class LangUnit {
     }
 
     static [string] get_LangCodeByByte([int]$LangByte) {
-        return [Lang_CodeByte]::$($LangByte)
+        return [Lang_CodeByte].GetEnumName($LangByte)
     }
 
     static [int] get_LangByteByCode([string]$LangCode) {
@@ -274,6 +274,6 @@ class LangUnit {
     }
 
     [string] get_Code() {
-        return [LangUnit]::LangTable.$($this.Byte)
+        return [LangUnit]::get_LangCodeByByte($this.Byte)
     }
 }
