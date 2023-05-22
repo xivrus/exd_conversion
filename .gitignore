@@ -5,4 +5,5 @@ old
 exports
 changelogs
 logs
+.vscode
 /config.cfg
