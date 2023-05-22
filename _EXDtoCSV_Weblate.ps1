@@ -1,4 +1,4 @@
-﻿using module .\lib\EXHF.psm1
+using module .\lib\EXHF.psm1
 using module .\lib\EXDF.psm1
 
 $INCLUDE_LIST = @(
@@ -25,8 +25,8 @@ if ($args.Count -eq 0) {
     $host.UI.RawUI.WindowTitle = "EXD -> CSV - Weblate"
 }
 
-New-Variable -Name "UNIX_NL_BYTE" -Value ([byte]0x0A) -Option Constant -ErrorAction SilentlyContinue
-New-Variable -Name "VAR_START_BYTE" -Value ([byte]0x02) -Option Constant -ErrorAction SilentlyContinue
+$UNIX_NL_BYTE   = [byte] 0x0A
+$VAR_START_BYTE = [byte] 0x02
 
 :script while ($true) {
     . $INCLUDE_LIST[0]  # Import settings on every iteration so that the user could change them on the fly
