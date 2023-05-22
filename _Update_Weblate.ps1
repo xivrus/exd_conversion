@@ -27,6 +27,10 @@ if ($error_var) {
     Pause
     break
 }
+if (-not $(Test-Path -Path .\config.cfg)) {
+	Copy-Item -Path .\config_sample.cfg -Destination .\config.cfg -ErrorAction Stop
+}
+
 
 function Compare-Files {
     param (
@@ -341,22 +345,19 @@ catch {
 
 Add-Type -AssemblyName System.Web
 
-if ($VERBOSE_OUTPUT) {
-    $VerbosePreference = "Continue"
+$CONFIG = Get-Content -Path .\config.cfg | ConvertFrom-StringData
+if ($CONFIG.Verbose) {
+	$VerbosePreference = "Continue"
 } else {
-    $VerbosePreference = "SilentlyContinue"
+	$VerbosePreference = "SilentlyContinue"
 }
-
-
-$token = Get-Content .\token.txt
-if (-not $token) {
-    "Token was not found, there will be no links to the strings."
+if (-not $CONFIG.WeblateToken) {
+    "Weblate token was not found, there will be no links to the strings."
 }
 $headers = @{
-    Authorization = "Bearer {0}" -f $token
+    Authorization = "Bearer {0}" -f $CONFIG.WeblateToken
 }
-# TODO: Take this out into a config
-$base_uri = ''
+$base_uri = $CONFIG.WeblateURI
 
 
 $PROJECT_PATH = $PWD

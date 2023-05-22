@@ -1,4 +1,4 @@
-using module .\lib\EXHF.psm1
+﻿using module .\lib\EXHF.psm1
 using module .\lib\EXDF.psm1
 
 $INCLUDE_LIST = @(
@@ -21,17 +21,23 @@ if ($error_var) {
     break
 }
 
+if (-not $(Test-Path -Path .\config.cfg)) {
+	Copy-Item -Path .\config_sample.cfg -Destination .\config.cfg -ErrorAction Stop
+}
+
 $UNIX_NL_BYTE   = [byte] 0x0A
 $VAR_START_BYTE = [byte] 0x02
 
 while ($true) {
-    . $INCLUDE_LIST[0]  # Import settings on every iteration so that the user could change them on the fly
-    $GLOBAL_CUSTOMIZE = $false
-    if ($VERBOSE_OUTPUT) {
+	# Import settings on every iteration so that the user could change them on the fly
+    . $INCLUDE_LIST[0]
+    $CONFIG = Get-Content -Path .\config.cfg | ConvertFrom-StringData
+	if ($CONFIG.Verbose) {
         $VerbosePreference = "Continue"
     } else {
         $VerbosePreference = "SilentlyContinue"
     }
+	$GLOBAL_CUSTOMIZE = $false
 
     if ($QUEST_EXCLUDE_LIST[0] -and $QUEST_INCLUDE_LIST[0]) {
         Write-Host "Error: Lists QUEST_EXCLUDE_LIST and QUEST_INCLUDE_LIST are both non-empty.`nOne of them must be empty." -ForegroundColor DarkRed

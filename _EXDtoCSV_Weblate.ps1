@@ -1,4 +1,4 @@
-using module .\lib\EXHF.psm1
+﻿using module .\lib\EXHF.psm1
 using module .\lib\EXDF.psm1
 
 $INCLUDE_LIST = @(
@@ -21,12 +21,19 @@ if ($error_var) {
     break
 }
 
+if (-not $(Test-Path -Path .\config.cfg)) {
+	Copy-Item -Path .\config_sample.cfg -Destination .\config.cfg -ErrorAction Stop
+}
+
 $UNIX_NL_BYTE   = [byte] 0x0A
 $VAR_START_BYTE = [byte] 0x02
 
 :script while ($true) {
-    . $INCLUDE_LIST[0]  # Import settings on every iteration so that the user could change them on the fly
-    if ($VERBOSE_OUTPUT) {
+	# Import settings on every iteration so that the user could change them on the fly
+    . $INCLUDE_LIST[0]
+    $CONFIG = Get-Content -Path .\config.cfg | ConvertFrom-StringData
+
+	if ($CONFIG.Verbose) {
         $VerbosePreference = "Continue"
     } else {
         $VerbosePreference = "SilentlyContinue"
