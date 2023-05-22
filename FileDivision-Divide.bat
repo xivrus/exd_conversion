@@ -1,0 +1,1 @@
+pwsh .\FileDivision.ps1 -Operation Divide
