@@ -21,10 +21,6 @@ if ($error_var) {
     break
 }
 
-if ($args.Count -eq 0) {
-    $host.UI.RawUI.WindowTitle = "EXD -> CSV - Weblate"
-}
-
 $UNIX_NL_BYTE   = [byte] 0x0A
 $VAR_START_BYTE = [byte] 0x02
 
