@@ -32,7 +32,7 @@ while ($true) {
 	# Import settings on every iteration so that the user could change them on the fly
     . $INCLUDE_LIST[0]
     $CONFIG = Get-Content -Path .\config.cfg | ConvertFrom-StringData
-	if ($CONFIG.Verbose) {
+	if ([int] $CONFIG.Verbose) {
         $VerbosePreference = "Continue"
     } else {
         $VerbosePreference = "SilentlyContinue"
