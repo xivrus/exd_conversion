@@ -1,4 +1,4 @@
-$INCLUDE_LIST = @(
+﻿$INCLUDE_LIST = @(
     '.\lib\_Settings.ps1',
     '.\lib\Engine.ps1'
 )
@@ -219,13 +219,13 @@ try {
                 $query = $new_csv_rows[$row_count].context
 
 				try {
-                $reply = Invoke-RestMethod -Method Get -Headers $headers `
-                    -Uri "https://$base_uri/api/translations/ffxiv-translation/$component/$lang/units/?q=$query"
-                    $weblate_link = $reply.results[0].web_url
+					$reply = Invoke-RestMethod -Method Get -Headers $headers `
+						-Uri "https://$base_uri/api/translations/ffxiv-translation/$component/$lang/units/?q=$query"
+					$weblate_link = $reply.results[0].web_url
 				}
 				catch {
-                    $weblate_link = 'Не удалось получить ссылку'
-                }
+					$weblate_link = 'Не удалось получить ссылку'
+				}
 
                 if ($LanguageCode -eq 'en') {
                     $null = $changelog.Add(
@@ -347,7 +347,7 @@ catch {
 Add-Type -AssemblyName System.Web
 
 $CONFIG = Get-Content -Path .\config.cfg | ConvertFrom-StringData
-if ($CONFIG.Verbose) {
+if ([int] $CONFIG.Verbose) {
 	$VerbosePreference = "Continue"
 } else {
 	$VerbosePreference = "SilentlyContinue"
