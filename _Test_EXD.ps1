@@ -6,6 +6,7 @@ using module .\lib\EXDF.psm1
 $exh_path = '.\current\exh_source\exd\item.exh'
 
 $item_exh = [EXHF]::new( $exh_path )
+$item_exh.Export('.\item_custom.exh')
 
 $item_0_exd = [EXDF]::new(
 	$item_exh.GetPage(0),

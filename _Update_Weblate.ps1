@@ -1,4 +1,4 @@
-﻿$INCLUDE_LIST = @(
+$INCLUDE_LIST = @(
     '.\lib\_Settings.ps1',
     '.\lib\Engine.ps1'
 )

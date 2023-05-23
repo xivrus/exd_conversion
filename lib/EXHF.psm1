@@ -1,59 +1,72 @@
 # This file contains EXHF class and its supplementary classes
+using namespace System.Buffers.Binary
 
 class EXHF {
     [string] $Path
 
-    static [int32] $Signature = 0x45584846 # "EXHF"
-    static [int16] $Version = 0x0003
-    [int16] $SizeOfDatasetChunk
-    [byte[]] $Unknown1 # uint16 in big-endian; use GetUnknown1() to get value
-    [byte[]] $Unknown2 # uint32 in big-endian; use GetUnknown2() to get value
-    [int32] $NumberOfEntries
+    static [uint32] $Signature = 0x45584846 # "EXHF"
+    static [uint16] $Version = 0x0003
+    [uint16] $SizeOfDatasetChunk
+    [uint16] $Unknown1 # use GetUnknown1() to get value
+    [uint32] $Unknown2 # use GetUnknown2() to get value
+    [uint32] $NumberOfEntries
+	# $DatasetTable be a dynamic array for the ability to add more datasets
     [System.Collections.Generic.List[DatasetUnit]] $DatasetTable = @()
     [PageUnit[]] $PageTable
-    $LangTable = [LangUnit[]]::new(8)  # Lang_CodeByte.Count + 1
+	# I don't really know how to properly implement languages
+    $LangTable = [LangUnit[]]::new(8)
 
     [int[]] $StringDatasetOffsets
 
     # FileInfo object is also accepted since it has $Path property
     EXHF([string]$Path) {
-        $ExhBytes = [System.IO.File]::ReadAllBytes($Path)
+		$stream = [System.IO.FileStream]::new($Path, [System.IO.FileMode]::Open)
+		$reader = [System.IO.BinaryReader]::new($stream)
+
         $this.Path = $Path
-        if ([System.BitConverter]::ToUInt32($ExhBytes[0x03..0x00], 0) -ne [EXHF]::Signature) {
+		$sig = [BinaryPrimitives]::ReadUInt32BigEndian( $reader.ReadBytes(4) )
+        if ($sig -ne [EXHF]::Signature) {
             throw [System.IO.InvalidDataException]::new(
                 "Incorrect format: File signature is not EXHF."
             )
         }
-        $ver = [System.BitConverter]::ToUInt16($ExhBytes[0x05..0x04], 0)
+        $ver = [BinaryPrimitives]::ReadUInt16BigEndian( $reader.ReadBytes(2) )
         if ($ver -ne [EXHF]::Version) {
             Write-Warning "Unexpected EXH version: {0} instead of {1}.`n`tFile: $Path" -f $ver, [EXHF]::Version
         }
-        $this.SizeOfDatasetChunk = [System.BitConverter]::ToUInt16($ExhBytes[0x07..0x06], 0)
-        $NumberOfDatasets =        [System.BitConverter]::ToUInt16($ExhBytes[0x09..0x08], 0)
-        $NumberOfPages =           [System.BitConverter]::ToUInt16($ExhBytes[0x0B..0x0A], 0)
-        $NumberOfLangCodes =       [System.BitConverter]::ToUInt16($ExhBytes[0x0D..0x0C], 0)
-        $this.Unknown1 =           $ExhBytes[0x0E..0x0F]
-        $this.Unknown2 =           $ExhBytes[0x10..0x13]
-        $this.NumberOfEntries =    [System.BitConverter]::ToUInt32($ExhBytes[0x17..0x14], 0)
-        foreach ($i in (0..($NumberOfDatasets-1))) {
+        $this.SizeOfDatasetChunk = [BinaryPrimitives]::ReadUInt16BigEndian( $reader.ReadBytes(2) )
+        $NumberOfDatasets =        [BinaryPrimitives]::ReadUInt16BigEndian( $reader.ReadBytes(2) )
+        $NumberOfPages =           [BinaryPrimitives]::ReadUInt16BigEndian( $reader.ReadBytes(2) )
+        $NumberOfLangCodes =       [BinaryPrimitives]::ReadUInt16BigEndian( $reader.ReadBytes(2) )
+        $this.Unknown1 =           [BinaryPrimitives]::ReadUInt16BigEndian( $reader.ReadBytes(2) )
+        $this.Unknown2 =           [BinaryPrimitives]::ReadUInt32BigEndian( $reader.ReadBytes(4) )
+        $this.NumberOfEntries =    [BinaryPrimitives]::ReadUInt32BigEndian( $reader.ReadBytes(4) )
+        
+		$null = $reader.ReadBytes(8)
+
+		foreach ($i in (1..$NumberOfDatasets)) {
             $this.DatasetTable.Add(
-                [DatasetUnit]::new([System.BitConverter]::ToUInt16($ExhBytes[(0x21 + $i*4)..(0x20 + $i*4)], 0), [System.BitConverter]::ToUInt16($ExhBytes[(0x23 + $i*4)..(0x22 + $i*4)], 0))
+				[DatasetUnit]::new(
+					[BinaryPrimitives]::ReadUInt16BigEndian( $reader.ReadBytes(2) ),
+					[BinaryPrimitives]::ReadUInt16BigEndian( $reader.ReadBytes(2) )
+				)
             )
         }
-        $offset = 0x20 + $NumberOfDatasets * 4
-        $this.PageTable = foreach ($i in (0..($NumberOfPages-1))) {
+        $this.PageTable = foreach ($i in (1..$NumberOfPages)) {
             [PageUnit]::new(
                 $this,
-                [System.BitConverter]::ToUInt32($ExhBytes[($offset + 3 + $i*8)..($offset + $i*8)], 0),
-                [System.BitConverter]::ToUInt32($ExhBytes[($offset + 7 + $i*8)..($offset + 4 + $i*8)], 0)
+                [BinaryPrimitives]::ReadUInt32BigEndian( $reader.ReadBytes(4) ),
+                [BinaryPrimitives]::ReadUInt32BigEndian( $reader.ReadBytes(4) )
             )
         }
-        $offset += $NumberOfPages * 8
-        foreach ($i in (0..($NumberOfLangCodes-1))) {
-            $this.LangTable[$i+1] = [LangUnit]::new(
-                [System.BitConverter]::ToUInt16($ExhBytes[($offset + $i*2)..($offset + 1 + $i*2)], 0)
+        foreach ($i in (1..$NumberOfLangCodes)) {
+            $this.LangTable[$i] = [LangUnit]::new(
+                $reader.ReadUInt16()
             )
-        }
+		}
+
+		$reader.Dispose()
+		$stream.Dispose()
     }
 
 
@@ -61,25 +74,24 @@ class EXHF {
         return $(Split-Path $this.Path -Leaf) -replace '\.exh',''
     }
 
-
-    [int16] GetNumberOfDatasets() {
+    [uint16] GetNumberOfDatasets() {
         return $this.DatasetTable.Count
     }
 
-    [int16] GetNumberOfPages() {
+    [uint16] GetNumberOfPages() {
         return $this.PageTable.Count
     }
 
-    [int16] GetNumberOfLangs() {
+    [uint16] GetNumberOfLangs() {
         return $this.LangTable.Count
     }
 
-    [int16] GetUnknown1() {
-        return [System.BitConverter]::ToUInt16($this.Unknown1[1..0], 0)
+    [uint16] GetUnknown1() {
+        return $this.Unknown1
     }
 
-    [int32] GetUnknown2() {
-        return [System.BitConverter]::ToUInt32($this.Unknown2[3..0], 0)
+    [uint32] GetUnknown2() {
+        return $this.Unknown2
     }
 
 
@@ -88,6 +100,8 @@ class EXHF {
     }
 
     # Make sure to create a separate modded EXH variable first
+	# TODO: Needs update since BinaryReader integration
+	# TODO: Also I never tested it
     [void] AddDataset([Dataset_NameByte]$Type, $ExdRef) {
         $Type = [uint16]$Type
         if ([System.Enum]::IsDefined([Dataset_NameByte], $Type) -eq $false) {
@@ -138,42 +152,46 @@ class EXHF {
         return $this.PageTable[$Number]
     }
 
-    [LangUnit] GetLang([Lang_CodeByte]$Lang) {
+    [LangUnit] GetLang([Lang_CodeValue]$Lang) {
         return $this.LangTable[$Lang]
     }
 
 
     [void] Export([string]$Destination) {
-        [System.Collections.Generic.List[byte]] $output = @()
+		$stream = [System.IO.FileStream]::new($Destination, [System.IO.FileMode]::Create)
+		$writer = [System.IO.BinaryWriter]::new($stream)
+		$bytes_uint32 = [byte[]](0x00) * 4
+		$bytes_uint16 = [byte[]](0x00) * 2
         # Header
-        $output.AddRange([System.BitConverter]::GetBytes( [ipaddress]::HostToNetworkOrder([EXHF]::Signature) ))
-        $output.AddRange([System.BitConverter]::GetBytes( [ipaddress]::HostToNetworkOrder([EXHF]::Version) ))
-        $output.AddRange([System.BitConverter]::GetBytes( [ipaddress]::HostToNetworkOrder($this.get_SizeOfDatasetChunk()) ))
-        $output.AddRange([System.BitConverter]::GetBytes( [ipaddress]::HostToNetworkOrder($this.GetNumberOfDatasets()) ))
-        $output.AddRange([System.BitConverter]::GetBytes( [ipaddress]::HostToNetworkOrder($this.GetNumberOfPages()) ))
-        $output.AddRange([System.BitConverter]::GetBytes( [ipaddress]::HostToNetworkOrder($this.GetNumberOfLangs()) ))
-        $output.AddRange($this.Unknown1)
-        $output.AddRange($this.Unknown2)
-        $output.AddRange([System.BitConverter]::GetBytes( [ipaddress]::HostToNetworkOrder($this.get_NumberOfEntries()) ))
-        $output.AddRange([byte[]](0x00) * 8)
+		[BinaryPrimitives]::WriteUInt32BigEndian($bytes_uint32, [EXHF]::Signature);              $writer.Write($bytes_uint32)
+		[BinaryPrimitives]::WriteUInt16BigEndian($bytes_uint16, [EXHF]::Version);                $writer.Write($bytes_uint16)
+		[BinaryPrimitives]::WriteUInt16BigEndian($bytes_uint16, $this.get_SizeOfDatasetChunk()); $writer.Write($bytes_uint16)
+		[BinaryPrimitives]::WriteUInt16BigEndian($bytes_uint16, $this.GetNumberOfDatasets());    $writer.Write($bytes_uint16)
+		[BinaryPrimitives]::WriteUInt16BigEndian($bytes_uint16, $this.GetNumberOfPages());       $writer.Write($bytes_uint16)
+		[BinaryPrimitives]::WriteUInt16BigEndian($bytes_uint16, $this.GetNumberOfLangs());       $writer.Write($bytes_uint16)
+		[BinaryPrimitives]::WriteUInt16BigEndian($bytes_uint16, $this.Unknown1);                 $writer.Write($bytes_uint16)
+		[BinaryPrimitives]::WriteUInt32BigEndian($bytes_uint32, $this.Unknown2);                 $writer.Write($bytes_uint32)
+		[BinaryPrimitives]::WriteUInt32BigEndian($bytes_uint32, $this.get_NumberOfEntries());    $writer.Write($bytes_uint32)
+        $writer.Write([byte[]](0x00) * 8)
         # Dataset table
         foreach ($Dataset in $this.DatasetTable) {
-            $output.AddRange([System.BitConverter]::GetBytes( [ipaddress]::HostToNetworkOrder($Dataset.get_Type()) ))
-            $output.AddRange([System.BitConverter]::GetBytes( [ipaddress]::HostToNetworkOrder($Dataset.get_Offset()) ))
+			[BinaryPrimitives]::WriteUInt16BigEndian($bytes_uint16, $Dataset.get_Type());   $writer.Write($bytes_uint16)
+			[BinaryPrimitives]::WriteUInt16BigEndian($bytes_uint16, $Dataset.get_Offset()); $writer.Write($bytes_uint16)
         }
         # Page table
         foreach ($Page in $this.PageTable) {
-            $output.AddRange([System.BitConverter]::GetBytes( [ipaddress]::HostToNetworkOrder($Page.get_Entry()) ))
-            $output.AddRange([System.BitConverter]::GetBytes( [ipaddress]::HostToNetworkOrder($Page.get_Size()) ))
+			[BinaryPrimitives]::WriteUInt32BigEndian($bytes_uint32, $Page.get_Entry()); $writer.Write($bytes_uint32)
+			[BinaryPrimitives]::WriteUInt32BigEndian($bytes_uint32, $Page.get_Size());  $writer.Write($bytes_uint32)
         }
         # Language table
-        foreach ($LangByte in $this.LangTable) {
-            if ($null -ne $LangByte) {
-                $output.AddRange([System.BitConverter]::GetBytes($LangByte.get_Byte()))
+        foreach ($LangValue in $this.LangTable) {
+            if ($null -ne $LangValue) {
+				$writer.Write( $LangValue.get_Value() )
             }
         }
         # Done
-        Set-Content -Value $output -Encoding Byte -Path $Destination
+		$writer.Dispose()
+		$stream.Dispose()
     }
 }
 
@@ -206,8 +224,8 @@ enum Dataset_NameRequiredBytes {
 }
 
 class DatasetUnit {
-    [int16] $Type
-    [int16] $Offset
+    [uint16] $Type
+    [uint16] $Offset
 
     DatasetUnit([uint16]$Type, [uint16]$Offset) {
         $this.Type = $Type
@@ -238,8 +256,8 @@ class DatasetUnit {
 
 class PageUnit {
     [EXHF] $ExhRef
-    [int32] $Entry
-    [int32] $Size
+    [uint32] $Entry
+    [uint32] $Size
 
     PageUnit([EXHF]$Exh, [uint32]$Entry, [uint32]$Size) {
         $this.ExhRef = $Exh
@@ -248,7 +266,7 @@ class PageUnit {
     }
 }
 
-enum Lang_CodeByte {
+enum Lang_CodeValue {
     ja  = 1
     en  = 2
     de  = 3
@@ -259,21 +277,21 @@ enum Lang_CodeByte {
 }
 
 class LangUnit {
-    [int16] $Byte
+    [uint16] $Value
 
-    LangUnit([uint16]$LangByte) {
-        $this.Byte = $LangByte
+    LangUnit([uint16]$LangValue) {
+        $this.Value = $LangValue
     }
 
-    static [string] get_LangCodeByByte([int]$LangByte) {
-        return [Lang_CodeByte].GetEnumName($LangByte)
+    static [string] get_LangCodeByValue([int]$LangValue) {
+        return [Lang_CodeValue].GetEnumName($LangValue)
     }
 
-    static [int] get_LangByteByCode([string]$LangCode) {
-        return [Lang_CodeByte]::$($LangCode)
+    static [int] get_LangValueByCode([string]$LangCode) {
+        return [Lang_CodeValue]::$($LangCode)
     }
 
     [string] get_Code() {
-        return [LangUnit]::get_LangCodeByByte($this.Byte)
+        return [LangUnit]::get_LangCodeByValue($this.Value)
     }
 }

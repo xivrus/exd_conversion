@@ -1,5 +1,6 @@
 # This file contains EXDF class and its supplementary classes
 using module .\EXHF.psm1
+using namespace System.Buffers.Binary
 
 class EXDF {
     [EXHF] $ExhRef
@@ -130,7 +131,7 @@ class EXDF {
         foreach ($i in (0..3)) {
             $output[(0x0C + $i)] = $data_section_size[$i]
         }
-        Set-Content -Value $output -Encoding Byte -Path $Destination
+        Set-Content -Value $output -Path $Destination -AsByteStream
     }
 }
 

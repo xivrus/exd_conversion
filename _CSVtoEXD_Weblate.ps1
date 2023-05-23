@@ -1,4 +1,4 @@
-﻿using module .\lib\EXHF.psm1
+using module .\lib\EXHF.psm1
 using module .\lib\EXDF.psm1
 
 $INCLUDE_LIST = @(
