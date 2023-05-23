@@ -33,7 +33,7 @@ $VAR_START_BYTE = [byte] 0x02
     . $INCLUDE_LIST[0]
     $CONFIG = Get-Content -Path .\config.cfg | ConvertFrom-StringData
 
-	if ($CONFIG.Verbose) {
+	if ([int] $CONFIG.Verbose) {
         $VerbosePreference = "Continue"
     } else {
         $VerbosePreference = "SilentlyContinue"
