@@ -218,13 +218,14 @@ try {
                 $lang = $CurrentCsv.BaseName
                 $query = $new_csv_rows[$row_count].context
 
-                $reply = Invoke-RestMethod -Method Get -Headers $headers `
-                    -Uri "https://$base_uri/api/translations/ffxiv-translation/$component/$lang/units/?q=$query"
-                if ($reply.count -gt 0) {
-                    $weblate_link = $reply.results[0].web_url
-                } else {
-                    $weblate_link = 'Не удалось получить ссылку'
-                }
+				try {
+					$reply = Invoke-RestMethod -Method Get -Headers $headers `
+						-Uri "https://$base_uri/api/translations/ffxiv-translation/$component/$lang/units/?q=$query"
+					$weblate_link = $reply.results[0].web_url
+				}
+				catch {
+					$weblate_link = 'Не удалось получить ссылку'
+				}
 
                 if ($LanguageCode -eq 'en') {
                     $null = $changelog.Add(
@@ -346,7 +347,7 @@ catch {
 Add-Type -AssemblyName System.Web
 
 $CONFIG = Get-Content -Path .\config.cfg | ConvertFrom-StringData
-if ($CONFIG.Verbose) {
+if ([int] $CONFIG.Verbose) {
 	$VerbosePreference = "Continue"
 } else {
 	$VerbosePreference = "SilentlyContinue"
