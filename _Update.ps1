@@ -93,13 +93,21 @@ function Update-Csv {
                 }
             }
         
-            # Comparison cases:
-            # Case 1. Current and new strings exist, current index == new index
-            # Case 2. Current and new strings exist, current index > new index
-            # Case 3. Current and new strings exist, current index < new index
-            # Case 4. Only new string exists
-            # Case 5. Only current string exists
-            for ($row_count = 0; $row_count -lt $new_csv_rows.Count; $row_count++) {
+        # Comparison cases:
+        # Case 1. Current and new strings exist, current index == new index
+		#         - Compare source strings
+		#         - If same - skip, else - record string update
+        # Case 2. Current and new strings exist, current index > new index
+		#         - Insert new string row into current strings table
+        # Case 3. Current and new strings exist, current index < new index
+		#         - Keep removing rows from current table until we reach new index
+        # Case 4. Only new string exists
+		#         - Add new string row to the end of current strings table
+        # Case 5. Only current string exists (a.k.a. we reached the end of new table)
+		#         - Keep removing rows from the end of current table
+		#           until current and new tables have the same size
+		# The order of case checking: 4 > 2 > 3 > 1 > 5
+		for ($row_count = 0; $row_count -lt $new_csv_rows.Count; $row_count++) {
                 # Case 4 
                 if ($row_count -ge $curr_csv_rows.Count) {
                     $null = $curr_csv_rows.Add($new_csv_rows[$row_count])
@@ -147,7 +155,12 @@ function Update-Csv {
                     })
                 
                     $curr_csv_rows.RemoveAt($row_count)
-                    if ($row_count -ge $curr_csv_rows.Count) { break }
+					# In case we reached the end of current table
+                	if ($row_count -ge $curr_csv_rows.Count) {
+						# Go through the same new string again to reach case 4
+						$row_count--
+                	    break
+                	}
                     $curr_index = [uint32]$curr_csv_rows[$row_count].Index
                 }
             
