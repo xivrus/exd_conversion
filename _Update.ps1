@@ -79,8 +79,8 @@ function Update-Csv {
                 Return ,$changelog
             }
         
-            $curr_csv_rows = [System.Collections.ArrayList]@(Import-Csv $CurrentCsv)
-            $new_csv_rows = @(Import-Csv $NewCsv)
+            $curr_csv_rows = [System.Collections.ArrayList]@(Import-Csv -Path $CurrentCsv -Encoding UTF8)
+            $new_csv_rows = @(Import-Csv -Path $NewCsv -Encoding UTF8)
         
             # Add index to new target strings for components listed in $UPDATE_ADD_INDEX.
             # That way any changed or new strings will have index on them in the game.
@@ -180,7 +180,7 @@ function Update-Csv {
             }
         
             if ($changelog) {
-                $curr_csv_rows | Export-Csv $CurrentCsv -NoTypeInformation -Encoding UTF8
+                $curr_csv_rows | Export-Csv -Path $CurrentCsv -NoTypeInformation -Encoding UTF8
 				Remove-BomFromFile -Path $CurrentCsv
                 "$file_name - Done. $($changelog.Count) lines changed." | Tee-Object $log -Append | Write-Host
             } else {
@@ -196,7 +196,7 @@ function Update-Csv {
         $null = New-Item "$current_csv_dir_path\$sub_path" -ItemType Directory -ErrorAction Ignore
         $null = Copy-Item $NewCsv "$current_csv_dir_path\$sub_path\$($NewCsv.Name)"
     
-        $curr_csv_rows = @(Import-Csv $CurrentCsv)
+        $curr_csv_rows = @(Import-Csv -Path $CurrentCsv -Encoding UTF8)
         $curr_csv_rows | Export-Csv $CurrentCsv -NoTypeInformation -Encoding UTF8
         Remove-BomFromFile -Path $CurrentCsv
     
