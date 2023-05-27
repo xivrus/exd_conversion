@@ -85,8 +85,8 @@ try {
             Return ,$changelog
         }
 
-        $curr_csv_rows = [System.Collections.ArrayList]@(Import-Csv $CurrentCsv)
-        $new_csv_rows = @(Import-Csv $NewCsv)
+        $curr_csv_rows = [System.Collections.ArrayList]@(Import-Csv -Path $CurrentCsv -Encoding UTF8)
+        $new_csv_rows = @(Import-Csv -Path $NewCsv -Encoding UTF8)
 
 		# Clean sublanguage of translations.
 		#  OR
@@ -301,7 +301,7 @@ try {
     $null = Copy-Item $NewCsv "$current_csv_dir_path\$($NewCsv.Name)"
 
     if ($LanguageCode -notin $OFFICIAL_LANGUAGES) {
-		$curr_csv_rows = @(Import-Csv $CurrentCsvPath)
+		$curr_csv_rows = @(Import-Csv -Path $CurrentCsvPath -Encoding UTF8)
         foreach ($row in $curr_csv_rows) {
             $row.fuzzy = 'True'
         }
