@@ -604,14 +604,16 @@ while ($true) {
                         $row.Value.SetStringBytes($result_bytes)
                     }
 
-                    # +1 to negate this awesome float magic:
+                    # Floor it to negate this awesome float magic:
                     # > 27340 -gt 27340
                     # False
                     # > 27340 -gt 273.4 * 100
                     # True
-                    if ( $csv_current_row -gt $1_percent * $percent + 1 ) {
-                        Write-Progress -Activity "[$file_num/$file_total] Converting '$base_name'" -Status "$percent% Complete:" -PercentComplete $percent
-                        $percent += 1
+                    if ( $csv_current_row -gt [System.Math]::Floor($percent * $1_percent) ) {
+                        Write-Progress -Activity "[$file_num/$file_total] Converting '$base_name'" `
+							-Status "$percent% Complete:" `
+							-PercentComplete $percent
+                        $percent++
                     }
                     $csv_current_row++
                 }
