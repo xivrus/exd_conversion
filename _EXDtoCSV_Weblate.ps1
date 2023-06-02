@@ -248,13 +248,7 @@ $VAR_START_BYTE = [byte] 0x02
                 }
                 $exd_files = $exd_files | Sort-Object { [int]($_.BaseName -split '_')[-2] }
 
-                if ($lang_code -in $OFFICIAL_LANGUAGES) {
-                    $exh_lang = $lang_code
-                    $fuzzy = $false
-                } else {
-                    $exh_lang = 'en'
-                    $fuzzy = $true
-                }
+                $fuzzy = $lang_code -notin $OFFICIAL_LANGUAGES
                 foreach ($page in (0..$($exh.GetNumberOfPages() - 1))) {
                     # TODO: Wrong place, move it under strings section
                     $file_start_time = Get-Date
