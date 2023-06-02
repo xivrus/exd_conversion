@@ -292,11 +292,7 @@ New-Variable -Name "VAR_START_BYTE" -Value ([byte]0x02) -Option Constant -ErrorA
                 # or until there was an error when trying to create EXD object
                 do {
                     try {
-                        $exd = [EXDF]::new(
-                            $exh.GetPage($page),
-                            $exh.GetLang('en'),
-                            $exd_files[$page]
-                        )
+                        $exd = [EXDF]::new($exh, $exd_files[$page])
                         break
                     }
                     catch [System.IO.IOException] {

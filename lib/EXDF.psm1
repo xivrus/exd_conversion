@@ -3,79 +3,71 @@ using module .\EXHF.psm1
 using namespace System.Buffers.Binary
 
 class EXDF {
-    [EXHF] $ExhRef
-    [PageUnit] $PageRef
-    [LangUnit] $LangRef
+    [EXHF] $EXH
     [string] $Path
 
-    static [int32] $Signature = 0x45584446 # "EXDF"
-    static [int16] $Version = 0x0002
-    [byte[]] $Unknown # int16 in big-endian; use GetUnknown() to get actual value
-    $DataRowTable = [System.Collections.Generic.Dictionary[int,DataRowUnit]]::new()
+    static [uint32] $Signature = 0x45584446 # "EXDF"
+    static [uint16] $Version = 0x0002
+    [uint16] $Unknown
+    $DataRowTable = [System.Collections.Generic.Dictionary[uint32,DataRowUnit]]::new()
 
     # Passing FileInfo object is also accepted
-    EXDF([PageUnit]$Page, [LangUnit]$Lang, [string]$Path) {
-        $ExdBytes = [System.IO.File]::ReadAllBytes($Path)
-        if ([System.BitConverter]::ToUInt32($ExdBytes[0x03..0x00], 0) -ne [EXDF]::Signature) {
+    EXDF([EXHF] $ExhObject, [string] $Path) {
+		$file_name = Split-Path -Path $Path -Leaf
+		if ($file_name -notmatch '\.exd$') {
+			throw [System.IO.InvalidDataException]::new(
+                "File extension is not '.exd'."
+            )
+		}
+		$this.EXH = $ExhObject
+		$this.Path = $Path
+
+		$stream = [System.IO.FileStream]::new($this.Path, [System.IO.FileMode]::Open)
+		$reader = [System.IO.BinaryReader]::new($stream)
+
+		$sig = [BinaryPrimitives]::ReadUInt32BigEndian( $reader.ReadBytes(4) )
+        if ($sig -ne [EXDF]::Signature) {
             throw [System.IO.InvalidDataException]::new(
-                "Incorrect format: File signature is not EXHD."
+                "Incorrect format: File signature is not EXDF."
             )
         }
-        $this.LangRef = $Lang
-        $this.PageRef = $Page
-        $this.ExhRef = $Page.ExhRef
-        $this.Path = $Path
-        $ver = [System.BitConverter]::ToUInt16($ExdBytes[0x05..0x04], 0)
+        $ver = [BinaryPrimitives]::ReadUInt16BigEndian( $reader.ReadBytes(2) )
         if ($ver -ne [EXDF]::Version) {
             Write-Warning "Unexpected EXD version: {0} instead of {1}`n`tFile: $Path" -f $ver, [EXDF]::Version
         }
-        $this.Unknown = $ExdBytes[0x06..0x07]
-        if ($this.ExhRef.GetNumberOfPages() -eq 1) {
-            # There are some files that have incorrect page size due to skipped indexes.
-            # The worst offender is 'addon'. For such files we'll get the true amount
-            # from the offset table size.
-            $total_entries = [System.BitConverter]::ToUInt32($ExdBytes[0x0B..0x08], 0) / 8
-        } else {
-            $total_entries = $this.PageRef.get_Size()
-        }
-        if ($total_entries -gt 0) {
-            foreach ($i in (0..$($total_entries - 1))) {
-                $offset = [System.BitConverter]::ToUInt32($ExdBytes[(0x27 + $i * 8)..(0x24 + $i * 8)], 0)
-                $size = [System.BitConverter]::ToUInt32($ExdBytes[($offset + 3)..($offset)], 0)
-                try {
-                $this.DataRowTable.Add(
-                    [int] [System.BitConverter]::ToUInt32($ExdBytes[(0x23 + $i * 8)..(0x20 + $i * 8)], 0),
-                    [DataRowUnit]::new(
-                        $this.ExhRef,
-                        $size,
-                        $ExdBytes[($offset + 4)..($offset + 5)],
-                        $ExdBytes[($offset + 6)..($offset + 5 + $this.ExhRef.get_SizeOfDatasetChunk())],
-                        $ExdBytes[($offset + 6 + $this.ExhRef.get_SizeOfDatasetChunk())..($offset + 5 + $size)]
-                    )
+        $this.Unknown = [BinaryPrimitives]::ReadUInt16BigEndian( $reader.ReadBytes(2) )
+
+		$total_entries = [BinaryPrimitives]::ReadUInt32BigEndian( $reader.ReadBytes(4) ) / 8
+        if ($total_entries -lt 1) {
+			return
+		}
+		$data_size = $this.EXH.get_SizeOfDatasetChunk()
+        foreach ($i in (0..$($total_entries - 1))) {
+			$index_pos = 0x20 + $i * 8
+
+			$stream.Seek($index_pos, [System.IO.SeekOrigin]::Begin)
+			$index      = [BinaryPrimitives]::ReadUInt32BigEndian( $reader.ReadBytes(4) )
+            $offset_pos = [BinaryPrimitives]::ReadUInt32BigEndian( $reader.ReadBytes(4) )
+
+			$stream.Seek($offset_pos, [System.IO.SeekOrigin]::Begin)
+            $size = [BinaryPrimitives]::ReadUInt32BigEndian( $reader.ReadBytes(4) )
+			$string_size = $size - $data_size
+            $this.DataRowTable.Add(
+                $index,
+                [DataRowUnit]::new(
+                    $this.EXH,
+                    $size,
+					[BinaryPrimitives]::ReadUInt16BigEndian( $reader.ReadBytes(2) ),
+                    $reader.ReadBytes( $data_size ),
+                    $reader.ReadBytes( $string_size )
                 )
-                }
-                catch {
-                    $_
-                }
-            }
+            )
         }
-    }
-    # Create path assuming this EXD is in the same folder as EXH
-    EXDF([PageUnit]$Page, [LangUnit]$Lang) {
-        $this.LangRef = $Lang
-        $this.PageRef = $Page
-        $this.ExhRef = $Page.ExhRef
-        EXDF("{0}") -f $(
-            $this.ExhRef.Path -replace '\.exh',("_{0}_{1}.exd" -f
-                $this.PageRef.get_Entry(),
-                $this.LangRef.get_Code())
-        )
+
+		$reader.Dispose()
+		$stream.Dispose()
     }
 
-
-    [int] GetUnknown() {
-        return [System.BitConverter]::ToUInt16($this.Unknown[1..0], 0)
-    }
 
     [byte[]] GetDataBytes([int]$Index) {
         return $this.DataRowTable.$Index.DataBytes
@@ -95,73 +87,87 @@ class EXDF {
     }
 
     [void] ExportBIN([string]$Destination) {
-        [System.Collections.Generic.List[byte]] $output = @()
+		$stream = [System.IO.FileStream]::new($Destination, [System.IO.FileMode]::Create)
+		$writer = [System.IO.BinaryWriter]::new($stream)
+
         foreach ($DataRow in $this.DataRowTable.GetEnumerator()) {
-            $output.AddRange($DataRow.Value.DataBytes)
+            $writer.Write($DataRow.Value.DataBytes)
         }
-        Set-Content -Value $output -Encoding Byte -Path $Destination
-    }
+
+		$writer.Dispose()
+		$stream.Dispose()
+	}
 
     [void] ExportEXD([string]$Destination) {
-        [System.Collections.Generic.List[byte]] $output = @()
-        # Header except DataSectionSize
-        $output.AddRange([System.BitConverter]::GetBytes( [ipaddress]::HostToNetworkOrder([EXDF]::Signature) ))
-        $output.AddRange([System.BitConverter]::GetBytes( [ipaddress]::HostToNetworkOrder([EXDF]::Version) ))
-        $output.AddRange($this.Unknown)
+		$stream = [System.IO.FileStream]::new($Destination, [System.IO.FileMode]::Create)
+		$writer = [System.IO.BinaryWriter]::new($stream)
+		$bytes_uint32 = [byte[]](0x00) * 4
+		$bytes_uint16 = [byte[]](0x00) * 2
+
         $offset_table_size = $this.DataRowTable.Count * 8
-        $output.AddRange([System.BitConverter]::GetBytes( [ipaddress]::HostToNetworkOrder($offset_table_size) ))
-        $output.AddRange([byte[]](0x00) * 20)  # 0x0C..0x0F is DataSectionSize, it will be filled later
+
+		# Header except DataSectionSize
+		[BinaryPrimitives]::WriteUInt32BigEndian($bytes_uint32, [EXDF]::Signature);  $writer.Write($bytes_uint32)
+		[BinaryPrimitives]::WriteUInt16BigEndian($bytes_uint16, [EXDF]::Version);    $writer.Write($bytes_uint16)
+		[BinaryPrimitives]::WriteUInt16BigEndian($bytes_uint16, $this.Unknown);      $writer.Write($bytes_uint16)
+		[BinaryPrimitives]::WriteUInt32BigEndian($bytes_uint32, $offset_table_size); $writer.Write($bytes_uint32)
+		$writer.Write([byte[]](0x00) * 4)   # 0x0C..0x0F is DataSectionSize, it will be filled later
+		$writer.Write([byte[]](0x00) * 16)  # Padding
         # Offset table + Data section
-        $data_current_index = $output.Count + $offset_table_size
-        $offset_current_index = $output.Count
+		# * Offset table is fixed size while data section is dynamic
+		# * Because of this we'll fill offset table with zeros first
+		#   * It doesn't actually write to disk yet, stream buffer is used instead until the file is closed
+		$offset_current_pos = $stream.Position
+		$writer.Write([byte[]](0x00) * $offset_table_size)
+        $data_current_pos = $stream.Position
         foreach ($DataRow in $this.DataRowTable.GetEnumerator()) {
-            $output.InsertRange($offset_current_index, [System.BitConverter]::GetBytes( [ipaddress]::HostToNetworkOrder($DataRow.Key) ))
-            $output.InsertRange($offset_current_index + 4, [System.BitConverter]::GetBytes( [ipaddress]::HostToNetworkOrder($data_current_index) ))
-            $offset_current_index += 8
-            $output.AddRange([System.BitConverter]::GetBytes( [ipaddress]::HostToNetworkOrder($DataRow.Value.get_SizeOfChunk()) ))
-            $output.AddRange($DataRow.Value.Unknown)
-            $output.AddRange($DataRow.Value.DataBytes)
-            $output.AddRange($DataRow.Value.StringBytes)
-            $data_current_index += $DataRow.Value.get_SizeOfChunk() + 6  # 4 bytes for SizeOfChunk + 2 bytes for Unknown
+			$stream.Seek($offset_current_pos, [System.IO.SeekOrigin]::Begin)
+			[BinaryPrimitives]::WriteUInt32BigEndian($bytes_uint32, $DataRow.Key);      $writer.Write($bytes_uint32)
+			[BinaryPrimitives]::WriteUInt32BigEndian($bytes_uint32, $data_current_pos); $writer.Write($bytes_uint32)
+			$offset_current_pos = $stream.Position
+
+			$stream.Seek($data_current_pos, [System.IO.SeekOrigin]::Begin)
+			[BinaryPrimitives]::WriteUInt32BigEndian($bytes_uint32, $DataRow.Value.SizeOfChunk); $writer.Write($bytes_uint32)
+			[BinaryPrimitives]::WriteUInt16BigEndian($bytes_uint16, $DataRow.Value.Unknown);     $writer.Write($bytes_uint16)
+			$writer.Write($DataRow.Value.DataBytes)
+			$writer.Write($DataRow.Value.StringBytes)
+            $data_current_pos = $stream.Position
         }
-        # Calculate and fill DataSectionSize; 32 is header size
-        $data_section_size = [System.BitConverter]::GetBytes( [ipaddress]::HostToNetworkOrder($output.Count - $offset_table_size - 32) )
-        # For some reason CopyTo() doesn't work with [List<>]
-        # so I'll do this the old-fashioned way
-        foreach ($i in (0..3)) {
-            $output[(0x0C + $i)] = $data_section_size[$i]
-        }
-        Set-Content -Value $output -Path $Destination -AsByteStream
-    }
+        # Calculate and fill DataSectionSize
+		# * $data_current_pos is now at the end of the file
+		# * 32 is header size
+        $data_section_size = $data_current_pos - $offset_table_size - 32
+		$stream.Seek(0x0C, [System.IO.SeekOrigin]::Begin)
+		[BinaryPrimitives]::WriteUInt32BigEndian($bytes_uint32, $data_section_size); $writer.Write($bytes_uint32)
+        # Done
+		$writer.Dispose()
+		$stream.Dispose()
+	}
 }
 
 class DataRowUnit {
-    [EXHF] $ExhRef
-    [int32] $SizeOfChunk
-    [byte[]] $Unknown  # int16 in big-endian; use GetUnknown() to get value
+    [EXHF] $EXH
+    [uint32] $SizeOfChunk
+    [uint16] $Unknown
     [byte[]] $DataBytes
     [byte[]] $StringBytes
 
-    DataRowUnit([EXHF]$ExhRef, [uint32]$s, [byte[]]$u, [byte[]]$d, [byte[]]$str) {
-        $this.ExhRef = $ExhRef
+    DataRowUnit([EXHF]$EXH, [uint32]$s, [uint16]$u, [byte[]]$d, [byte[]]$str) {
+        $this.EXH = $EXH
         $this.SizeOfChunk = $s
         $this.Unknown = $u
         $this.DataBytes = $d
         $this.StringBytes = $str
     }
 
-    [int] GetUnknown() {
-        return [System.BitConverter]::ToUInt16($this.Unknown[1..0])
-    }
-
     [int] GetStringIndex([int]$StrDatasetNum) {
         return [BitConverter]::ToUInt32($this.DataBytes[
-            ($this.ExhRef.GetStringDatasetOffsets()[$StrDatasetNum] + 3)..($this.ExhRef.GetStringDatasetOffsets()[$StrDatasetNum])
+            ($this.EXH.GetStringDatasetOffsets()[$StrDatasetNum] + 3)..($this.EXH.GetStringDatasetOffsets()[$StrDatasetNum])
         ], 0)
     }
 
     [byte[]] GetStringBytesFiltered() {
-        if ($this.ExhRef.GetStringDatasetOffsets().Count -eq 0) { return [byte[]]@() }
+        if ($this.EXH.GetStringDatasetOffsets().Count -eq 0) { return [byte[]]@() }
         return $this.StringBytes[0..([array]::IndexOf(
                 $this.StringBytes,
                 [byte]0x00,
@@ -169,10 +175,11 @@ class DataRowUnit {
             ))]
     }
 
-    # Align the whole chunk to 0x04 bytes if necessary; 2 is $this.Unknown.Count
+    # Align the whole chunk to 0x04 bytes if necessary
     [void] AlignChunk() {
         $chunk_size = $this.DataBytes.Count + $this.StringBytes.Count
         if ($this.SizeOfChunk -ne $chunk_size) {
+			# 2 is $this.Unknown byte size
             if ($chunk_size % 4 -ne 2) {
                 $this.StringBytes += [byte[]]@(0x00) * (4 - ($chunk_size + 2) % 4)
             }
@@ -184,12 +191,12 @@ class DataRowUnit {
     [void] SetStringBytes([byte[]]$StringBytes) {
         $this.StringBytes = $StringBytes
         # Don't change string dataset #0, it's always 0x00; start changing only from str. dataset #1
-        for ($i = 1; $i -lt $this.ExhRef.GetStringDatasetOffsets().Count; $i++) {
+        for ($i = 1; $i -lt $this.EXH.GetStringDatasetOffsets().Count; $i++) {
             [System.BitConverter]::GetBytes(
                 [array]::IndexOf($StringBytes, [byte]0x00, $this.GetStringIndex($i-1)) + 1
             )[3..0].CopyTo(
                 $this.DataBytes,
-                $this.ExhRef.GetStringDatasetOffsets()[$i]
+                $this.EXH.GetStringDatasetOffsets()[$i]
             )
         }
         $this.AlignChunk()

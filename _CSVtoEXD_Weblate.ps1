@@ -442,7 +442,7 @@ while ($true) {
                 Write-Verbose "$($base_name): Reading EXD file at $exd_source_path" *>&1 | Tee-Object $log -Append
                 do {
                     try {
-                        $exd = [EXDF]::new($page, $exh.GetLang('en'), $exd_source_path)
+                        $exd = [EXDF]::new($exh, $exd_source_path)
                         break
                     }
                     catch [System.IO.IOException] {

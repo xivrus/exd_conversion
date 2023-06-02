@@ -350,7 +350,7 @@ New-Variable -Name "VAR_START_BYTE" -Value ([byte]0x02) -Option Constant -ErrorA
                 Write-Verbose "$($base_name): Reading EXD file at $exd_source_path" *>&1 | Tee-Object $log -Append
                 do {
                     try {
-                        $exd = [EXDF]::new($page, $exh.GetLang('en'), $exd_source_path)
+                        $exd = [EXDF]::new($exh, $exd_source_path)
                         break
                     }
                     catch [System.IO.IOException] {

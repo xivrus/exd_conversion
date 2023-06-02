@@ -256,11 +256,7 @@ $VAR_START_BYTE = [byte] 0x02
                     # or until there was an error when trying to create EXD object
                     do {
                         try {
-                            $exd = [EXDF]::new(
-                                $exh.GetPage($page),
-                                $exh.GetLang($exh_lang),
-                                $exd_files[$page]
-                            )
+                            $exd = [EXDF]::new($exh, $exd_files[$page])
                             break
                         }
                         catch [System.IO.IOException] {

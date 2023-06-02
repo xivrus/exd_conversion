@@ -1,6 +1,16 @@
 # This file contains EXHF class and its supplementary classes
 using namespace System.Buffers.Binary
 
+enum Lang_CodeValue {
+    ja  = 1
+    en  = 2
+    de  = 3
+    fr  = 4
+    chs = 5
+    cht = 6
+    ko  = 7
+}
+
 class EXHF {
     [string] $Path
 
@@ -13,8 +23,9 @@ class EXHF {
 	# $DatasetTable be a dynamic array for the ability to add more datasets
     [System.Collections.Generic.List[DatasetUnit]] $DatasetTable = @()
     [PageUnit[]] $PageTable
-	# I don't really know how to properly implement languages
-    $LangTable = [LangUnit[]]::new(8)
+	# If [Lang_CodeValue] position is true, then the language exists... kinda.
+	# In reality check against real file.
+    $Languages = [bool[]]::new(8)
 
     [int[]] $StringDatasetOffsets
 
@@ -60,18 +71,12 @@ class EXHF {
             )
         }
         foreach ($i in (1..$NumberOfLangCodes)) {
-            $this.LangTable[$i] = [LangUnit]::new(
-                $reader.ReadUInt16()
-            )
+			$lang = $reader.ReadUInt16()
+            $this.Languages[$lang] = $true
 		}
 
 		$reader.Dispose()
 		$stream.Dispose()
-    }
-
-
-    [string] GetBaseName() {
-        return $(Split-Path $this.Path -Leaf) -replace '\.exh',''
     }
 
     [uint16] GetNumberOfDatasets() {
@@ -83,17 +88,8 @@ class EXHF {
     }
 
     [uint16] GetNumberOfLangs() {
-        return $this.LangTable.Count
+        return $this.Languages.Where( { $_ -eq $true } ).Count
     }
-
-    [uint16] GetUnknown1() {
-        return $this.Unknown1
-    }
-
-    [uint32] GetUnknown2() {
-        return $this.Unknown2
-    }
-
 
     [DatasetUnit] GetDataset([int]$Number) {
         return $this.DatasetTable[$Number]
@@ -147,15 +143,9 @@ class EXHF {
         return $this.StringDatasetOffsets
     }
 
-
-    [PageUnit] GetPage([int]$Number) {
-        return $this.PageTable[$Number]
+    [PageUnit] GetPage([int]$StartIndex) {
+        return $this.PageTable.Where( { $_.Entry -eq $StartIndex }, 'First' )[0]
     }
-
-    [LangUnit] GetLang([Lang_CodeValue]$Lang) {
-        return $this.LangTable[$Lang]
-    }
-
 
     [void] Export([string]$Destination) {
 		$stream = [System.IO.FileStream]::new($Destination, [System.IO.FileMode]::Create)
@@ -196,31 +186,31 @@ class EXHF {
 }
 
 enum Dataset_NameByte {
-    string =   0x00
-    bool =     0x01
-    byte =     0x02
-    ubyte =    0x03
-    short =    0x04
-    ushort =   0x05
-    int =      0x06
-    uint =     0x07
-    float =    0x09
-    int_x4 =   0x0B
-    bitflags = 0x19
+	string   = 0x00
+	bool     = 0x01
+	byte     = 0x02
+	ubyte    = 0x03
+	short    = 0x04
+	ushort   = 0x05
+	int      = 0x06
+	uint     = 0x07
+	float    = 0x09
+	int_x4   = 0x0B
+	bitflags = 0x19
 }
 
 enum Dataset_NameRequiredBytes {
-    string =   4
-    bool =     1
-    byte =     1
-    ubyte =    1
-    short =    2
-    ushort =   2
-    int =      4
-    uint =     4
-    float =    4
-    int_x4 =   8
-    bitflags = 0
+	string   = 4
+	bool     = 1
+	byte     = 1
+	ubyte    = 1
+	short    = 2
+	ushort   = 2
+	int      = 4
+	uint     = 4
+	float    = 4
+	int_x4   = 8
+	bitflags = 0
 }
 
 class DatasetUnit {
@@ -263,35 +253,5 @@ class PageUnit {
         $this.ExhRef = $Exh
         $this.Entry = $Entry
         $this.Size = $Size
-    }
-}
-
-enum Lang_CodeValue {
-    ja  = 1
-    en  = 2
-    de  = 3
-    fr  = 4
-    chs = 5
-    cht = 6
-    ko  = 7
-}
-
-class LangUnit {
-    [uint16] $Value
-
-    LangUnit([uint16]$LangValue) {
-        $this.Value = $LangValue
-    }
-
-    static [string] get_LangCodeByValue([int]$LangValue) {
-        return [Lang_CodeValue].GetEnumName($LangValue)
-    }
-
-    static [int] get_LangValueByCode([string]$LangCode) {
-        return [Lang_CodeValue]::$($LangCode)
-    }
-
-    [string] get_Code() {
-        return [LangUnit]::get_LangCodeByValue($this.Value)
     }
 }
