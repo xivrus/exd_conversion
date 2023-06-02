@@ -371,9 +371,9 @@ while ($true) {
                 $csv_parent_cache_path = $null
                 $csv_parent_cache = $null
                 # Step 1
-                foreach ($i in (0..$($csv.Count - 1))) {
-                    if ($csv[$i].target -eq '') {
-                        $csv[$i].target = $csv[$i].source
+                foreach ($row in $csv) {
+                    if ($row.target -eq '') {
+                        $row.target = $row.source
                     }
                 }
                 # Step 2
