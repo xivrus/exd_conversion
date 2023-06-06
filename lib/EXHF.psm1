@@ -148,6 +148,10 @@ class EXHF {
         return $this.PageTable.Where( { $_.Entry -eq $StartIndex }, 'First' )[0]
     }
 
+	[bool] LangExists([Lang_CodeValue]$Language) {
+		return $this.LangTable[$Language]
+	}
+
     [void] Export([string]$Destination) {
 		$stream = [System.IO.FileStream]::new($Destination, [System.IO.FileMode]::Create)
 		$writer = [System.IO.BinaryWriter]::new($stream)
