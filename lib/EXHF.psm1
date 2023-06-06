@@ -179,9 +179,10 @@ class EXHF {
 			[BinaryPrimitives]::WriteUInt32BigEndian($bytes_uint32, $Page.get_Size());  $writer.Write($bytes_uint32)
         }
         # Language table
-        foreach ($LangValue in $this.LangTable) {
-            if ($null -ne $LangValue) {
-				$writer.Write( $LangValue.get_Value() )
+        foreach ($Lang in [Lang_CodeValue].GetEnumValues()) {
+            if ($this.LangExists($Lang)) {
+				$lang_uint16 = [uint16] [Lang_CodeValue]::$Lang
+				$writer.Write( $lang_uint16 )
             }
         }
         # Done
