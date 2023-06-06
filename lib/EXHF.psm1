@@ -2,13 +2,14 @@
 using namespace System.Buffers.Binary
 
 enum Lang_CodeValue {
-    ja  = 1
-    en  = 2
-    de  = 3
-    fr  = 4
-    chs = 5
-    cht = 6
-    ko  = 7
+	none = 0
+    ja   = 1
+    en   = 2
+    de   = 3
+    fr   = 4
+    chs  = 5
+    cht  = 6
+    ko   = 7
 }
 
 class EXHF {
