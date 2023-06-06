@@ -25,7 +25,7 @@ class EXHF {
     [PageUnit[]] $PageTable
 	# If [Lang_CodeValue] position is true, then the language exists... kinda.
 	# In reality check against real file.
-    $Languages = [bool[]]::new(8)
+    $LangTable = [bool[]]::new(8)
 
     [int[]] $StringDatasetOffsets
 
@@ -72,7 +72,7 @@ class EXHF {
         }
         foreach ($i in (1..$NumberOfLangCodes)) {
 			$lang = $reader.ReadUInt16()
-            $this.Languages[$lang] = $true
+            $this.LangTable[$lang] = $true
 		}
 
 		$reader.Dispose()
@@ -88,7 +88,7 @@ class EXHF {
     }
 
     [uint16] GetNumberOfLangs() {
-        return $this.Languages.Where( { $_ -eq $true } ).Count
+        return $this.LangTable.Where( { $_ -eq $true } ).Count
     }
 
     [DatasetUnit] GetDataset([int]$Number) {
